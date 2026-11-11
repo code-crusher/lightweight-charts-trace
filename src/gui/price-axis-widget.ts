@@ -27,6 +27,7 @@ import { PriceMark, PriceScale } from '../model/price-scale';
 import { TextWidthCache } from '../model/text-width-cache';
 import { PriceAxisViewRendererOptions } from '../renderers/iprice-axis-view-renderer';
 import { PriceAxisRendererOptionsProvider } from '../renderers/price-axis-renderer-options-provider';
+import { sortAxisViewsByZIndex } from '../views/axis-view-z-order';
 import { IAxisView } from '../views/pane/iaxis-view';
 import { IPriceAxisView } from '../views/price-axis/iprice-axis-view';
 
@@ -677,7 +678,7 @@ export class PriceAxisWidget implements IDestroyable {
 			return;
 		}
 
-		const views = this._backLabels();
+		const views = sortAxisViewsByZIndex(this._backLabels());
 
 		const rendererOptions = this.rendererOptions();
 		const align = this._isLeft ? 'right' : 'left';

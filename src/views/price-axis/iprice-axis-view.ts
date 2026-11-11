@@ -4,7 +4,9 @@ import {
 	PriceAxisViewRendererOptions,
 } from '../../renderers/iprice-axis-view-renderer';
 
-export interface IPriceAxisView {
+import { ZIndexedAxisView } from '../axis-view-z-order';
+
+export interface IPriceAxisView extends ZIndexedAxisView {
 	coordinate(): number;
 	getFixedCoordinate(): number | null;
 	getRenderCoordinate(): number;

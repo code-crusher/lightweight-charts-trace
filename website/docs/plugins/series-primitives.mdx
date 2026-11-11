@@ -136,7 +136,14 @@ the label, such as the
 [`coordinate`](../api/interfaces/ISeriesPrimitiveAxisView.md#coordinate) method,
 which should return the desired coordinate for the label on the axis. It also
 defines optional methods to set the fixed coordinate, text, text color,
-background color, and visibility of the label.
+background color, visibility, and the z-index of the label.
+
+Labels on the same axis are drawn in the order their primitives were attached.
+To control which label appears on top when labels overlap, return a value from
+the optional
+[`zIndex`](../api/interfaces/ISeriesPrimitiveAxisView.md#zindex) method: labels
+with a higher z-index are drawn above labels with a lower one, and labels with
+the same z-index keep their attachment order.
 
 ## Lifecycle methods
 

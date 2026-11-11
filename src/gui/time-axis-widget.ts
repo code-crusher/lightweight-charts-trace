@@ -24,7 +24,9 @@ import { Pane } from '../model/pane';
 import { TextWidthCache } from '../model/text-width-cache';
 import { IPaneRenderer } from '../renderers/ipane-renderer';
 import { TimeAxisViewRendererOptions } from '../renderers/itime-axis-view-renderer';
+import { sortAxisViewsByZIndex } from '../views/axis-view-z-order';
 import { IAxisView } from '../views/pane/iaxis-view';
+import { ITimeAxisView } from '../views/time-axis/itime-axis-view';
 
 import { createBoundCanvas, releaseCanvas } from './canvas-utils';
 import { ChartWidget } from './chart-widget';
@@ -457,10 +459,12 @@ export class TimeAxisWidget<HorzScaleItem> implements MouseEventHandlers, IDestr
 
 	private _drawLabels(sources: readonly IDataSource[], target: CanvasRenderingTarget2D): void {
 		const rendererOptions = this._getRendererOptions();
+		const views: ITimeAxisView[] = [];
 		for (const source of sources) {
-			for (const view of source.timeAxisViews()) {
-				view.renderer().draw(target, rendererOptions);
-			}
+			views.push(...source.timeAxisViews());
+		}
+		for (const view of sortAxisViewsByZIndex(views)) {
+			view.renderer().draw(target, rendererOptions);
 		}
 	}
 

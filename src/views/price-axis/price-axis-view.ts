@@ -92,6 +92,10 @@ export abstract class PriceAxisView implements IPriceAxisView {
 		return this._axisRendererData.visible;
 	}
 
+	public zIndex(): number {
+		return 0;
+	}
+
 	public renderer(priceScale: PriceScale): IPriceAxisViewRenderer {
 		this._updateRendererDataIfNeeded();
 

@@ -107,6 +107,10 @@ class SeriesPrimitiveTimeAxisViewWrapper implements ITimeAxisView {
 		this._timeScale = timeScale;
 	}
 
+	public zIndex(): number {
+		return this._baseView.zIndex?.() ?? 0;
+	}
+
 	public renderer(): TimeAxisViewRenderer {
 		this._renderer.setData({
 			width: this._timeScale.width(),
@@ -124,6 +128,10 @@ class SeriesPrimitivePriceAxisViewWrapper extends PriceAxisView {
 		super();
 		this._baseView = baseView;
 		this._priceScale = priceScale;
+	}
+
+	public override zIndex(): number {
+		return this._baseView.zIndex?.() ?? 0;
 	}
 
 	protected override _updateRendererData(

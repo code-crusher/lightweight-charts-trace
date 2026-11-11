@@ -48,6 +48,17 @@ export interface ISeriesPrimitiveAxisView {
 	 * @returns whether the tick mark line should be visible (default: `true`)
 	 */
 	tickVisible?(): boolean;
+
+	/**
+	 * The z-index of the label. Labels with a higher z-index are drawn on top of
+	 * labels with a lower one, so a label can be kept visible when it overlaps
+	 * another one. Labels with the same z-index are drawn in the order their
+	 * sources were attached.
+	 *
+	 * @defaultValue `0`
+	 * @returns the z-index of the label.
+	 */
+	zIndex?(): number;
 }
 
 /**

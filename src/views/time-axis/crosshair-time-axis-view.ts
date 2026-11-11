@@ -32,6 +32,10 @@ export class CrosshairTimeAxisView implements ITimeAxisView {
 		this._invalidated = true;
 	}
 
+	public zIndex(): number {
+		return 0;
+	}
+
 	public renderer(): TimeAxisViewRenderer {
 		if (this._invalidated) {
 			this._updateImpl();
