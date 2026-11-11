@@ -29,8 +29,8 @@ describe('PriceScale', () => {
 
 		const mockChartModel: IChartModelBase = {
 			applyPriceScaleOptions: () => {},
-			findPriceScale: (id: string, paneIndex: number): PriceScaleOnPane | null => {
-				if (id === priceScaleId && paneIndex === 0) {
+			findPriceScale: (id: string, paneIndex?: number): PriceScaleOnPane | null => {
+				if (id === priceScaleId && (paneIndex ?? 0) === 0) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					return { priceScale, pane: {} as any };
 				}

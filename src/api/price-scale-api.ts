@@ -15,12 +15,12 @@ import { IPriceScaleApi } from './iprice-scale-api';
 export class PriceScaleApi implements IPriceScaleApi {
 	private _chartWidget: IChartWidgetBase;
 	private readonly _priceScaleId: string;
-	private readonly _paneIndex: number;
+	private readonly _paneIndex: number | undefined;
 
 	public constructor(chartWidget: IChartWidgetBase, priceScaleId: string, paneIndex?: number) {
 		this._chartWidget = chartWidget;
 		this._priceScaleId = priceScaleId;
-		this._paneIndex = paneIndex ?? 0;
+		this._paneIndex = paneIndex;
 	}
 
 	public applyOptions(options: DeepPartial<PriceScaleOptions>): void {

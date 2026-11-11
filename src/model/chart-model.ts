@@ -431,7 +431,7 @@ interface GradientColorsCache {
 
 export interface IChartModelBase {
 	applyPriceScaleOptions(priceScaleId: string, options: DeepPartial<PriceScaleOptions>, paneIndex?: number): void;
-	findPriceScale(priceScaleId: string, paneIndex: number): PriceScaleOnPane | null;
+	findPriceScale(priceScaleId: string, paneIndex?: number): PriceScaleOnPane | null;
 	options(): Readonly<ChartOptionsInternalBase>;
 	timeScale(): ITimeScale;
 	serieses(): readonly Series<SeriesType>[];
@@ -616,11 +616,12 @@ export class ChartModel<HorzScaleItem> implements IDestroyable, IChartModelBase 
 		this.fullUpdate();
 	}
 
-	public applyPriceScaleOptions(priceScaleId: string, options: DeepPartial<PriceScaleOptions>, paneIndex: number = 0): void {
-		const pane = this._panes[paneIndex];
+	public applyPriceScaleOptions(priceScaleId: string, options: DeepPartial<PriceScaleOptions>, paneIndex?: number): void {
+		const targetPaneIndex = paneIndex ?? 0;
+		const pane = this._panes[targetPaneIndex];
 		if (pane === undefined) {
 			if (process.env.NODE_ENV === 'development') {
-				throw new Error(`Trying to apply price scale options with incorrect pane index: ${paneIndex}`);
+				throw new Error(`Trying to apply price scale options with incorrect pane index: ${targetPaneIndex}`);
 			}
 			return;
 		}
@@ -665,19 +666,32 @@ export class ChartModel<HorzScaleItem> implements IDestroyable, IChartModelBase 
 		this._priceScalesOptionsChanged.fire();
 	}
 
-	public findPriceScale(priceScaleId: string, paneIndex: number): PriceScaleOnPane | null {
-		const pane = this._panes[paneIndex];
-		if (pane === undefined) {
-			return null;
+	public findPriceScale(priceScaleId: string, paneIndex?: number): PriceScaleOnPane | null {
+		// Default scales exist in every pane, so without an explicit pane index
+		// they keep using the first pane, as documented.
+		// Overlay scales are identified by a unique id that might belong to any
+		// pane (e.g. a volume scale on a separate pane), so they are looked up
+		// in all panes when no pane index is given.
+		const panesToSearch: (Pane | undefined)[] = paneIndex !== undefined
+			? [this._panes[paneIndex]]
+			: isDefaultPriceScale(priceScaleId)
+				? [this._panes[0]]
+				: this._panes;
+
+		for (const pane of panesToSearch) {
+			if (pane === undefined) {
+				continue;
+			}
+
+			const priceScale = pane.priceScaleById(priceScaleId);
+			if (priceScale !== null) {
+				return {
+					pane,
+					priceScale,
+				};
+			}
 		}
 
-		const priceScale = pane.priceScaleById(priceScaleId);
-		if (priceScale !== null) {
-			return {
-				pane,
-				priceScale,
-			};
-		}
 		return null;
 	}
 

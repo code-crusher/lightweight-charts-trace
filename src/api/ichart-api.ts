@@ -282,7 +282,9 @@ export interface IChartApiBase<HorzScaleItem = Time> {
 	 * Returns API to manipulate a price scale.
 	 *
 	 * @param priceScaleId - ID of the price scale.
-	 * @param paneIndex - Index of the pane (default: 0)
+	 * @param paneIndex - Index of the pane the price scale belongs to.
+	 * If omitted, the left and right price scales are taken from the first pane,
+	 * while an overlay price scale is looked up in all panes by its ID.
 	 * @returns Price scale API.
 	 */
 	priceScale(priceScaleId: string, paneIndex?: number): IPriceScaleApi;

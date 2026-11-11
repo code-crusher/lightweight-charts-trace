@@ -115,4 +115,49 @@ describe('PriceScaleApi.options()', () => {
 			expect(api.options()).to.deep.equal(createPriceScaleOptions(model.options().overlayPriceScales));
 		});
 	});
+
+	describe('for a price scale that lives in a pane other than the default one', () => {
+		it('finds the scale when no pane index is given', () => {
+			const model = createModel();
+			model.addSeriesToPane(createLineSeriesOnOverlayScale(model), 1);
+			const api = createPriceScaleApi(model);
+
+			const scale = model.findPriceScale(overlayScaleId, 1);
+			expect(scale).to.not.equal(null);
+			expect(api.options()).to.deep.equal(scale?.priceScale.options());
+		});
+
+		it('applies options to the scale when no pane index is given', () => {
+			const model = createModel();
+			model.addSeriesToPane(createLineSeriesOnOverlayScale(model), 1);
+			const api = createPriceScaleApi(model);
+
+			api.applyOptions({ scaleMargins: { top: 0.6, bottom: 0.2 } });
+
+			expect(model.findPriceScale(overlayScaleId, 1)?.priceScale.options().scaleMargins)
+				.to.deep.equal({ top: 0.6, bottom: 0.2 });
+		});
+
+		it('prefers the scale from the given pane over the same id in another pane', () => {
+			const model = createModel();
+			model.addSeriesToPane(createLineSeriesOnOverlayScale(model), 0);
+			model.addSeriesToPane(createLineSeriesOnOverlayScale(model), 1);
+
+			createPriceScaleApi(model, overlayScaleId, 0).applyOptions({ scaleMargins: { top: 0.6, bottom: 0.2 } });
+
+			expect(model.findPriceScale(overlayScaleId, 0)?.priceScale.options().scaleMargins)
+				.to.deep.equal({ top: 0.6, bottom: 0.2 });
+			expect(model.findPriceScale(overlayScaleId, 1)?.priceScale.options().scaleMargins)
+				.to.deep.equal(createPriceScaleOptions(model.options().overlayPriceScales).scaleMargins);
+		});
+
+		it('does not find an unknown overlay id in any pane', () => {
+			const model = createModel();
+			model.addSeriesToPane(createLineSeriesOnOverlayScale(model), 1);
+
+			expect(model.findPriceScale('unknown')).to.equal(null);
+			expect(createPriceScaleApi(model, 'unknown').options())
+				.to.deep.equal(createPriceScaleOptions(model.options().overlayPriceScales));
+		});
+	});
 });
