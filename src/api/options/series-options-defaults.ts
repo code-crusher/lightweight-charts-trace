@@ -14,6 +14,7 @@ export const seriesOptionsDefaults: SeriesOptionsCommon = {
 	visible: true,
 	hitTestTolerance: 3,
 	lastValueVisible: true,
+	lastValueTimeVisible: false,
 	priceLineVisible: true,
 	priceLineSource: PriceLineSource.LastBar,
 	priceLineWidth: 1,

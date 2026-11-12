@@ -699,6 +699,16 @@ export interface SeriesOptionsCommon {
 	lastValueVisible: boolean;
 
 	/**
+	 * Visibility of the label with the date/time of the latest visible bar, drawn below
+	 * the latest price on the price scale (like the price label on TradingView charts).
+	 *
+	 * Requires {@link SeriesOptionsCommon.lastValueVisible} to be enabled.
+	 *
+	 * @defaultValue `false`
+	 */
+	lastValueTimeVisible: boolean;
+
+	/**
 	 * You can name series when adding it to a chart. This name will be displayed on the label next to the last value label.
 	 *
 	 * @defaultValue `''`

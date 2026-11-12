@@ -17,6 +17,11 @@ export interface PriceAxisViewRendererCommonData {
 export interface PriceAxisViewRendererData {
 	visible: boolean;
 	text: string;
+	/**
+	 * An optional second line of text drawn below the main text within the same label
+	 * (e.g. the date/time of the last bar under its price).
+	 */
+	secondLineText?: string;
 	tickVisible: boolean;
 	moveTextToInvisibleTick: boolean;
 	borderColor: string;

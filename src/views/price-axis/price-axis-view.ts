@@ -64,6 +64,7 @@ export abstract class PriceAxisView implements IPriceAxisView {
 	}
 
 	public height(rendererOptions: PriceAxisViewRendererOptions, useSecondLine: boolean = false): number {
+		this._updateRendererDataIfNeeded();
 		return Math.max(
 			this._axisRenderer.height(rendererOptions, useSecondLine),
 			this._paneRenderer.height(rendererOptions, useSecondLine)

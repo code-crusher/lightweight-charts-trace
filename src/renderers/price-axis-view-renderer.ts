@@ -1,6 +1,8 @@
 import { BitmapCoordinatesRenderingScope, CanvasRenderingTarget2D, MediaCoordinatesRenderingScope } from 'fancy-canvas';
 
+import { ensureDefined } from '../helpers/assertions';
 import { drawRoundRectWithBorder } from '../helpers/canvas-helpers';
+import { makeFont } from '../helpers/make-font';
 
 import { TextWidthCache } from '../model/text-width-cache';
 
@@ -35,7 +37,10 @@ interface Geometry {
 		yTop: number;
 		yBottom: number;
 		xText: number;
+		firstLineY: number;
 		textMidCorrection: number;
+		secondLineY?: number;
+		secondLineMidCorrection?: number;
 	};
 }
 
@@ -57,7 +62,21 @@ export class PriceAxisViewRenderer implements IPriceAxisViewRenderer {
 			return 0;
 		}
 
-		return rendererOptions.fontSize + rendererOptions.paddingTop + rendererOptions.paddingBottom;
+		let height = rendererOptions.fontSize + rendererOptions.paddingTop + rendererOptions.paddingBottom;
+		if (this._data.secondLineText !== undefined) {
+			height += this._secondLineHeight(rendererOptions);
+		}
+
+		return height;
+	}
+
+	private _secondLineHeight(rendererOptions: PriceAxisViewRendererOptions): number {
+		return this._secondLineFontSize(rendererOptions) + rendererOptions.paddingBottom;
+	}
+
+	private _secondLineFontSize(rendererOptions: PriceAxisViewRendererOptions): number {
+		// the second line is slightly smaller than the main one, similar to TradingView charts
+		return Math.max(rendererOptions.fontSize - 2, Math.floor(rendererOptions.fontSize * 0.75));
 	}
 
 	public draw(
@@ -72,11 +91,14 @@ export class PriceAxisViewRenderer implements IPriceAxisViewRenderer {
 
 		const textColor = this._data.color;
 		const backgroundColor = this._commonData.background;
+		const secondLineText = this._data.secondLineText ?? '';
+		const hasSecondLine = secondLineText.length > 0;
+		const secondLineFont = hasSecondLine ? this._secondLineFont(rendererOptions) : '';
 
 		const geometry = target.useBitmapCoordinateSpace((scope: BitmapCoordinatesRenderingScope) => {
 			const ctx = scope.context;
 			ctx.font = rendererOptions.font;
-			const geom = this._calculateGeometry(scope, rendererOptions, textWidthCache, align);
+			const geom = this._calculateGeometry(scope, rendererOptions, textWidthCache, align, secondLineFont);
 			const gb = geom.bitmap;
 
 			/*
@@ -130,11 +152,19 @@ export class PriceAxisViewRenderer implements IPriceAxisViewRenderer {
 
 		target.useMediaCoordinateSpace(({ context: ctx }: MediaCoordinatesRenderingScope) => {
 			const gm = geometry.media;
-			ctx.font = rendererOptions.font;
 			ctx.textAlign = geometry.alignRight ? 'right' : 'left';
 			ctx.textBaseline = 'middle';
 			ctx.fillStyle = textColor;
-			ctx.fillText(this._data.text, gm.xText, (gm.yTop + gm.yBottom) / 2 + gm.textMidCorrection);
+			if (!hasSecondLine) {
+				ctx.font = rendererOptions.font;
+				ctx.fillText(this._data.text, gm.xText, (gm.yTop + gm.yBottom) / 2 + gm.textMidCorrection);
+				return;
+			}
+
+			ctx.font = rendererOptions.font;
+			ctx.fillText(this._data.text, gm.xText, gm.firstLineY + gm.textMidCorrection);
+			ctx.font = secondLineFont;
+			ctx.fillText(secondLineText, gm.xText, ensureDefined(gm.secondLineY) + ensureDefined(gm.secondLineMidCorrection));
 		});
 	}
 
@@ -142,7 +172,8 @@ export class PriceAxisViewRenderer implements IPriceAxisViewRenderer {
 		scope: BitmapCoordinatesRenderingScope,
 		rendererOptions: PriceAxisViewRendererOptions,
 		textWidthCache: TextWidthCache,
-		align: 'left' | 'right'
+		align: 'left' | 'right',
+		secondLineFont: string
 	): Geometry {
 		const { context: ctx, bitmapSize, mediaSize, horizontalPixelRatio, verticalPixelRatio } = scope;
 		const tickSize = (this._data.tickVisible || !this._data.moveTextToInvisibleTick) ? rendererOptions.tickLength : 0;
@@ -155,9 +186,26 @@ export class PriceAxisViewRenderer implements IPriceAxisViewRenderer {
 		const actualTextHeight = rendererOptions.fontSize;
 		const textMidCorrection = textWidthCache.yMidCorrection(ctx, text);
 
-		const textWidth = Math.ceil(textWidthCache.measureText(ctx, text));
+		const secondLineText = this._data.secondLineText ?? '';
+		const hasSecondLine = secondLineFont !== '' && secondLineText.length > 0;
+		const secondLineTextHeight = hasSecondLine ? this._secondLineFontSize(rendererOptions) : 0;
 
-		const totalHeight = actualTextHeight + paddingTop + paddingBottom;
+		let textWidth = Math.ceil(textWidthCache.measureText(ctx, text));
+		let secondLineMidCorrection = 0;
+		if (hasSecondLine) {
+			// the second line is drawn with a smaller font, so both its metrics
+			// (width - it can be wider than the price text, e.g. a full date below
+			// a short price - and the mid correction) must be measured with that font
+			const savedFont = ctx.font;
+			ctx.font = secondLineFont;
+			const secondLineWidth = Math.ceil(textWidthCache.measureText(ctx, secondLineText));
+			secondLineMidCorrection = textWidthCache.yMidCorrection(ctx, secondLineText);
+			ctx.font = savedFont;
+			textWidth = Math.max(textWidth, secondLineWidth);
+		}
+
+		const totalHeight = actualTextHeight + paddingTop + paddingBottom
+			+ (hasSecondLine ? secondLineTextHeight + paddingBottom : 0);
 
 		const totalWidth = rendererOptions.borderSize + paddingInner + paddingOuter + textWidth + tickSize;
 
@@ -205,6 +253,19 @@ export class PriceAxisViewRenderer implements IPriceAxisViewRenderer {
 			xText = xInside + tickSize + paddingInner;
 		}
 
+		const yTop = yTopBitmap / verticalPixelRatio;
+		const yBottom = yBottomBitmap / verticalPixelRatio;
+
+		let firstLineY = (yTop + yBottom) / 2;
+		let secondLineY: number | undefined;
+		if (hasSecondLine) {
+			// the first (price) line is centered within its own slice of the label,
+			// the second (date/time) line within the slice below it
+			const firstLineBottom = yTop + paddingTop + actualTextHeight + paddingBottom / 2;
+			firstLineY = yTop + paddingTop + actualTextHeight / 2;
+			secondLineY = firstLineBottom + secondLineTextHeight / 2;
+		}
+
 		return {
 			alignRight,
 			bitmap: {
@@ -223,11 +284,18 @@ export class PriceAxisViewRenderer implements IPriceAxisViewRenderer {
 				right: bitmapSize.width,
 			},
 			media: {
-				yTop: yTopBitmap / verticalPixelRatio,
-				yBottom: yBottomBitmap / verticalPixelRatio,
+				yTop,
+				yBottom,
 				xText,
+				firstLineY,
 				textMidCorrection,
+				secondLineY,
+				secondLineMidCorrection: hasSecondLine ? secondLineMidCorrection : undefined,
 			},
 		};
+	}
+
+	private _secondLineFont(rendererOptions: PriceAxisViewRendererOptions): string {
+		return makeFont(this._secondLineFontSize(rendererOptions), rendererOptions.fontFamily);
 	}
 }

@@ -40,6 +40,10 @@ export class SeriesPriceAxisView extends PriceAxisView {
 		if (showSeriesLastValue) {
 			axisRendererData.text = this._axisText(lastValueData, showSeriesLastValue, showPriceAndPercentage);
 			axisRendererData.visible = axisRendererData.text.length !== 0;
+
+			axisRendererData.secondLineText = axisRendererData.visible && seriesOptions.lastValueTimeVisible
+				? this._lastValueTimeText(lastValueData)
+				: undefined;
 		}
 
 		if (showSymbolLabel || showPriceAndPercentage) {
@@ -81,6 +85,20 @@ export class SeriesPriceAxisView extends PriceAxisView {
 		}
 
 		return result.trim();
+	}
+
+	/**
+	 * Formats the date/time of the bar the last value belongs to, to be drawn
+	 * on a second line of the last value label on the price scale.
+	 */
+	private _lastValueTimeText(lastValueData: LastValueDataInternalResultWithData): string | undefined {
+		const timeScale = this._source.model().timeScale();
+		const timeScalePoint = timeScale.indexToTimeScalePoint(lastValueData.index);
+		if (timeScalePoint === null) {
+			return undefined;
+		}
+
+		return timeScale.formatDateTime(timeScalePoint);
 	}
 
 	protected _axisText(lastValueData: LastValueDataInternalResultWithData, showSeriesLastValue: boolean, showPriceAndPercentage: boolean): string {
