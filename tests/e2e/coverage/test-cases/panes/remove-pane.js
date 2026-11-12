@@ -11,11 +11,12 @@ function interactionsToPerform() {
 }
 
 let chart;
+let secondSeries;
 function beforeInteractions(container) {
 	chart = LightweightCharts.createChart(container);
 
 	const mainSeries = chart.addSeries(LightweightCharts.LineSeries);
-	const secondSeries = chart.addSeries(LightweightCharts.LineSeries, {}, 1);
+	secondSeries = chart.addSeries(LightweightCharts.LineSeries, {}, 1);
 
 	mainSeries.setData(simpleData());
 	secondSeries.setData(simpleData());
@@ -25,5 +26,7 @@ function beforeInteractions(container) {
 
 function afterInteractions() {
 	chart.removePane(1);
+	// removing the series of the removed pane must not throw (issue #1938)
+	chart.removeSeries(secondSeries);
 	return Promise.resolve();
 }

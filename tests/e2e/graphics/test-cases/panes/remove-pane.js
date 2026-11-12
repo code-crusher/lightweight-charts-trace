@@ -39,6 +39,8 @@ function runTestCase(container) {
 		requestAnimationFrame(() => {
 			try {
 				chart.removePane(1);
+				// removing the series of the removed pane must not throw (issue #1938)
+				chart.removeSeries(secondSeries);
 				requestAnimationFrame(() => {
 					console.assert(chart.panes().length === 2, 'Pane should be removed');
 					return	resolve();

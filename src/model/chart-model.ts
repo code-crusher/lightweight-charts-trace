@@ -716,7 +716,25 @@ export class ChartModel<HorzScaleItem> implements IDestroyable, IChartModelBase 
 
 		assert(index >= 0 && index < this._panes.length, 'Invalid pane index');
 
+		const pane = this._panes[index];
+
+		// the pane's series must be detached from the model as well,
+		// otherwise the model would keep series which don't belong to any pane
+		// and any further operation with them (e.g. removing them via the API) would fail
+		pane.series().forEach((series: Series<SeriesType>) => {
+			const seriesIndex = this._serieses.indexOf(series);
+			assert(seriesIndex !== -1, 'Series not found');
+			this._serieses.splice(seriesIndex, 1);
+			if (series.destroy) {
+				series.destroy();
+			}
+		});
+
 		this._panes.splice(index, 1);
+
+		this.invalidateVisibleSeries();
+		this._timeScale.recalculateIndicesWithData();
+
 		this.fullUpdate();
 	}
 
@@ -1048,11 +1066,13 @@ export class ChartModel<HorzScaleItem> implements IDestroyable, IChartModelBase 
 	}
 
 	public removeSeries(series: Series<SeriesType>): void {
-		const pane = this.paneForSource(series);
-
 		const seriesIndex = this._serieses.indexOf(series);
-		assert(seriesIndex !== -1, 'Series not found');
-		const paneImpl = ensureNotNull(pane);
+		if (seriesIndex === -1) {
+			// the series has already been removed from the model (e.g. along with its pane)
+			return;
+		}
+
+		const paneImpl = ensureNotNull(this.paneForSource(series));
 		this._serieses.splice(seriesIndex, 1);
 		paneImpl.removeDataSource(series);
 		if (series.destroy) {
