@@ -14,9 +14,10 @@ import { UpdateType } from '../../views/pane/iupdatable-pane-view';
 
 import { seriesMarkerOptionsDefaults, SeriesMarkersOptions } from './options';
 import { SeriesMarkersPaneView } from './pane-view';
-import { InternalSeriesMarker, MarkerPositions, SeriesMarker } from './types';
+import { InternalSeriesMarker, MarkerPositions, SeriesMarker, SeriesMarkerBarPosition } from './types';
 import {
 	calculateAdjustedMargin,
+	calculateMarkerSpacing,
 	calculateShapeHeight,
 	shapeMargin as calculateShapeMargin,
 } from './utils';
@@ -134,10 +135,12 @@ export class SeriesMarkersPrimitive<HorzScaleItem> implements ISeriesPrimitive<H
 				const shapeMargin = calculateShapeMargin(barSpacing);
 				const marginValue = calculateShapeHeight(barSpacing) * 1.5 + shapeMargin * 2;
 				const positions = this._getMarkerPositions();
+				const aboveMargin = marginValue + this._getExtraSpacingMargin('aboveBar', shapeMargin);
+				const belowMargin = marginValue + this._getExtraSpacingMargin('belowBar', shapeMargin);
 
 				this._autoScaleMargins = {
-					above: calculateAdjustedMargin(marginValue, positions.aboveBar, positions.inBar),
-					below: calculateAdjustedMargin(marginValue, positions.belowBar, positions.inBar),
+					above: calculateAdjustedMargin(aboveMargin, positions.aboveBar, positions.inBar),
+					below: calculateAdjustedMargin(belowMargin, positions.belowBar, positions.inBar),
 				};
 			} else {
 				this._autoScaleMargins = null;
@@ -147,6 +150,20 @@ export class SeriesMarkersPrimitive<HorzScaleItem> implements ISeriesPrimitive<H
 		}
 
 		return this._autoScaleMargins;
+	}
+
+	private _getExtraSpacingMargin(position: SeriesMarkerBarPosition, shapeMargin: number): number {
+		const maxSpacing = this._markers.reduce(
+			(max: number, marker: SeriesMarker<HorzScaleItem>) => {
+				if (marker.position !== position) {
+					return max;
+				}
+				return Math.max(max, calculateMarkerSpacing(marker.spacing));
+			},
+			1
+		);
+
+		return (maxSpacing - 1) * shapeMargin;
 	}
 
 	private _getMarkerPositions(): MarkerPositions {
@@ -221,6 +238,7 @@ export class SeriesMarkersPrimitive<HorzScaleItem> implements ISeriesPrimitive<H
 					...baseMarker,
 					position: marker.position, // TypeScript knows this is SeriesMarkerBarPosition
 					price: marker.price, // Optional for bar positions
+					spacing: marker.spacing,
 				} satisfies InternalSeriesMarker<TimePointIndex>;
 			}
 		});

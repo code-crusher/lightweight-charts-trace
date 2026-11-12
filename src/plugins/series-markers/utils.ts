@@ -1,4 +1,5 @@
 import { ceiledEven, ceiledOdd } from '../../helpers/mathex';
+import { isNumber } from '../../helpers/strict-type-checks';
 
 import { SeriesMarkerShape } from './types';
 
@@ -24,6 +25,10 @@ export function calculateShapeHeight(barSpacing: number): number {
 
 export function shapeMargin(barSpacing: number): number {
 	return Math.max(size(barSpacing, 0.1), Constants.MinShapeMargin);
+}
+
+export function calculateMarkerSpacing(spacing: number | undefined): number {
+	return isNumber(spacing) ? Math.max(spacing, 0) : 1;
 }
 
 export interface BitmapShapeItemCoordinates {

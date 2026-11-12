@@ -21,6 +21,7 @@ import {
 } from './renderer';
 import { InternalSeriesMarker, SeriesMarkerPosition, SeriesMarkerPricePosition } from './types';
 import {
+	calculateMarkerSpacing,
 	calculateShapeHeight,
 	shapeMargin as calculateShapeMargin,
 } from './utils';
@@ -84,6 +85,8 @@ function fillSizeAndY<HorzScaleItem>(
 	const timeScale = chart.timeScale();
 	const sizeMultiplier = isNumber(marker.size) ? Math.max(marker.size, 0) : 1;
 	const shapeSize = calculateShapeHeight(timeScale.options().barSpacing) * sizeMultiplier;
+	const spacing = calculateMarkerSpacing(marker.spacing);
+	const margin = shapeMargin * spacing;
 
 	const halfSize = shapeSize / 2;
 	rendererItem.size = shapeSize;
@@ -100,27 +103,27 @@ function fillSizeAndY<HorzScaleItem>(
 		}
 		case 'aboveBar':
 		case 'atPriceTop': {
-			const offset = ignoreOffset ? 0 : offsets.aboveBar;
+			const offset = ignoreOffset ? 0 : offsets.aboveBar + margin;
 			rendererItem.y = (ensureNotNull(series.priceToCoordinate(price)) - halfSize - offset) as Coordinate;
 			if (rendererItem.text !== undefined) {
 				rendererItem.text.y = rendererItem.y - halfSize - textHeight * (0.5 + Constants.TextMargin) as Coordinate;
 				offsets.aboveBar += textHeight * (1 + 2 * Constants.TextMargin);
 			}
 			if (!ignoreOffset) {
-				offsets.aboveBar += shapeSize + shapeMargin;
+				offsets.aboveBar += shapeSize + margin;
 			}
 			return;
 		}
 		case 'belowBar':
 		case 'atPriceBottom': {
-			const offset = ignoreOffset ? 0 : offsets.belowBar;
+			const offset = ignoreOffset ? 0 : offsets.belowBar + margin;
 			rendererItem.y = (ensureNotNull(series.priceToCoordinate(price)) + halfSize + offset) as Coordinate;
 			if (rendererItem.text !== undefined) {
 				rendererItem.text.y = (rendererItem.y + halfSize + shapeMargin + textHeight * (0.5 + Constants.TextMargin)) as Coordinate;
 				offsets.belowBar += textHeight * (1 + 2 * Constants.TextMargin);
 			}
 			if (!ignoreOffset) {
-				offsets.belowBar += shapeSize + shapeMargin;
+				offsets.belowBar += shapeSize + margin;
 			}
 			return;
 		}
@@ -239,8 +242,8 @@ export class SeriesMarkersPaneView<HorzScaleItem> implements IPrimitivePaneView 
 		let prevTimeIndex = NaN;
 		const shapeMargin = calculateShapeMargin(timeScale.options().barSpacing);
 		const offsets: Offsets = {
-			aboveBar: shapeMargin,
-			belowBar: shapeMargin,
+			aboveBar: 0,
+			belowBar: 0,
 		};
 
 		this._data.visibleRange = visibleTimedValues(this._data.items, visibleBarsRange, true);
@@ -248,8 +251,8 @@ export class SeriesMarkersPaneView<HorzScaleItem> implements IPrimitivePaneView 
 			const marker = seriesMarkers[index];
 			if (marker.time !== prevTimeIndex) {
 				// new bar, reset stack counter
-				offsets.aboveBar = shapeMargin;
-				offsets.belowBar = shapeMargin;
+				offsets.aboveBar = 0;
+				offsets.belowBar = 0;
 				prevTimeIndex = marker.time;
 			}
 

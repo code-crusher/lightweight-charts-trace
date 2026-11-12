@@ -30,6 +30,7 @@ seriesMarkersPrimitive.setMarkers([
 		position: 'aboveBar',
 		shape: 'arrowDown',
 		time: 1556880900 as Time,
+		spacing: 2,
 	},
 ]);
 

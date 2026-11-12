@@ -54,6 +54,19 @@ interface SeriesMarkerBase<TimeType> {
 	 */
 	size?: number;
 	/**
+	 * The optional multiplier for the distance between the marker and the bar's wick,
+	 * and between markers stacked on the same bar.
+	 *
+	 * A value of `0` places the marker directly against the wick, `1` uses the default
+	 * distance, and higher values move the marker further away while keeping stacked
+	 * markers evenly separated.
+	 *
+	 * Only has an effect for the `aboveBar` and `belowBar` positions.
+	 *
+	 * @defaultValue `1`
+	 */
+	spacing?: number;
+	/**
 	 * The price value for exact Y-axis positioning.
 	 *
 	 * Required when using {@link SeriesMarkerPricePosition} position type.
