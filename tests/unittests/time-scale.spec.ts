@@ -10,6 +10,7 @@ import { Time, UTCTimestamp } from '../../src/model/horz-scale-behavior-time/typ
 import { InternalHorzScaleItem } from '../../src/model/ihorz-scale-behavior';
 import { ITimeScaleAnimation } from '../../src/model/invalidate-mask';
 import { LocalizationOptions } from '../../src/model/localization-options';
+import { MismatchDirection } from '../../src/model/plot-list';
 import { Logical, TickMarkWeightValue, TimePointIndex, TimeScalePoint } from '../../src/model/time-data';
 import { TimeScale } from '../../src/model/time-scale';
 
@@ -163,6 +164,61 @@ describe('TimeScale', () => {
 			ts.update(...tsUpdate(1));
 
 			expect(ts.timeToIndex({ timestamp: 0.5 as UTCTimestamp } as unknown as InternalHorzScaleItem, true)).to.be.equal(1);
+		});
+
+		it('should return the same index for MismatchDirection.NearestRight as for findNearest true', () => {
+			const ts = new TimeScale<Time>(chartModelMock(), timeScaleOptionsDefaults, fakeLocalizationOptions, behavior);
+
+			ts.update(...tsUpdate(2));
+
+			expect(ts.timeToIndex({ timestamp: -1 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestRight)).to.be.equal(0);
+			expect(ts.timeToIndex({ timestamp: 0.5 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestRight)).to.be.equal(1);
+			expect(ts.timeToIndex({ timestamp: 3 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestRight)).to.be.equal(2);
+		});
+
+		it('should return previous index if timestamp is between two values on the scale and MismatchDirection.NearestLeft is used', () => {
+			const ts = new TimeScale<Time>(chartModelMock(), timeScaleOptionsDefaults, fakeLocalizationOptions, behavior);
+
+			ts.update(...tsUpdate(2));
+
+			expect(ts.timeToIndex({ timestamp: 0.5 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestLeft)).to.be.equal(0);
+			expect(ts.timeToIndex({ timestamp: 1.5 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestLeft)).to.be.equal(1);
+		});
+
+		it('should return the exact index for time on scale regardless of the search direction', () => {
+			const ts = new TimeScale<Time>(chartModelMock(), timeScaleOptionsDefaults, fakeLocalizationOptions, behavior);
+
+			ts.update(...tsUpdate(2));
+
+			expect(ts.timeToIndex({ timestamp: 1 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestLeft)).to.be.equal(1);
+			expect(ts.timeToIndex({ timestamp: 1 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestRight)).to.be.equal(1);
+			expect(ts.timeToIndex({ timestamp: 1 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.None)).to.be.equal(1);
+		});
+
+		it('should return null if timestamp is before first timestamp and MismatchDirection.NearestLeft is used', () => {
+			const ts = new TimeScale<Time>(chartModelMock(), timeScaleOptionsDefaults, fakeLocalizationOptions, behavior);
+
+			ts.update(...tsUpdate(2));
+
+			expect(ts.timeToIndex({ timestamp: -1 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestLeft)).to.be.equal(null);
+		});
+
+		it('should return last index if timestamp is greater than last timestamp and MismatchDirection.NearestLeft is used', () => {
+			const ts = new TimeScale<Time>(chartModelMock(), timeScaleOptionsDefaults, fakeLocalizationOptions, behavior);
+
+			ts.update(...tsUpdate(2));
+
+			expect(ts.timeToIndex({ timestamp: 3 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.NearestLeft)).to.be.equal(2);
+		});
+
+		it('should behave as findNearest false when MismatchDirection.None is used', () => {
+			const ts = new TimeScale<Time>(chartModelMock(), timeScaleOptionsDefaults, fakeLocalizationOptions, behavior);
+
+			ts.update(...tsUpdate(2));
+
+			expect(ts.timeToIndex({ timestamp: -1 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.None)).to.be.equal(null);
+			expect(ts.timeToIndex({ timestamp: 0.5 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.None)).to.be.equal(null);
+			expect(ts.timeToIndex({ timestamp: 3 as UTCTimestamp } as unknown as InternalHorzScaleItem, MismatchDirection.None)).to.be.equal(null);
 		});
 	});
 

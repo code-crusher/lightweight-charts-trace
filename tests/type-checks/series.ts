@@ -7,6 +7,7 @@ import {
 	createChartEx,
 	HistogramSeries,
 	LineSeries,
+	MismatchDirection,
 } from '../../src';
 import { Mutable } from '../../src/helpers/mutable';
 import { ChartOptionsImpl } from '../../src/model/chart-model';
@@ -151,3 +152,16 @@ lineSeries.applyOptions({
 	// @ts-expect-error other series options do not accept null
 	color: null,
 });
+
+// timeToIndex accepts both the legacy boolean flag and a MismatchDirection
+chart.timeScale().timeToIndex(1556880900 as Time);
+chart.timeScale().timeToIndex(1556880900 as Time, true);
+chart.timeScale().timeToIndex(1556880900 as Time, false);
+chart.timeScale().timeToIndex(1556880900 as Time, MismatchDirection.NearestLeft);
+chart.timeScale().timeToIndex(1556880900 as Time, MismatchDirection.NearestRight);
+chart.timeScale().timeToIndex(1556880900 as Time, MismatchDirection.None);
+chart.timeScale().timeToIndex(
+	1556880900 as Time,
+	// @ts-expect-error unsupported search direction
+	'left'
+);

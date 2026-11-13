@@ -1,6 +1,7 @@
 import { DeepPartial } from '../helpers/strict-type-checks';
 
 import { Coordinate } from '../model/coordinate';
+import { MismatchDirection } from '../model/plot-list';
 import { IRange, Logical, LogicalRange, TimePointIndex } from '../model/time-data';
 import { HorzScaleOptions } from '../model/time-scale';
 
@@ -113,10 +114,22 @@ export interface ITimeScaleApi<HorzScaleItem> {
 	/**
 	 * Converts time to index.
 	 *
+	 * If there is no bar with exactly the provided time, the `findNearest` parameter controls
+	 * which index is returned:
+	 * - `true` or `MismatchDirection.NearestRight` - the first bar at or after the time, or the last bar if the time is after all bars
+	 * - `MismatchDirection.NearestLeft` - the last bar at or before the time, or `null` if the time is before all bars
+	 * - `false`, `MismatchDirection.None`, or omitting the parameter - no search is performed
+	 *
 	 * @param time - Time needs to be converted
+	 * @param findNearest - Whether to search for the nearest index and in which direction
 	 * @returns Index of that time or `null` if no time found on time scale
+	 * @example
+	 * ```js
+	 * // The last bar at or before the time, e.g. the bar that was forming when an order was placed
+	 * const index = chart.timeScale().timeToIndex(time, LightweightCharts.MismatchDirection.NearestLeft);
+	 * ```
 	 */
-	timeToIndex(time: HorzScaleItem, findNearest?: boolean): TimePointIndex | null;
+	timeToIndex(time: HorzScaleItem, findNearest?: boolean | MismatchDirection): TimePointIndex | null;
 
 	/**
 	 * Converts a time to local x coordinate.

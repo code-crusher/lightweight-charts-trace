@@ -10,6 +10,7 @@ import { Coordinate } from './coordinate';
 import { FormattedLabelsCache } from './formatted-labels-cache';
 import { IHorzScaleBehavior, InternalHorzScaleItem, InternalHorzScaleItemKey } from './ihorz-scale-behavior';
 import { LocalizationOptions } from './localization-options';
+import { MismatchDirection } from './plot-list';
 import { areRangesEqual, RangeImpl } from './range-impl';
 import { TickMark, TickMarks } from './tick-marks';
 import {
@@ -299,7 +300,7 @@ export interface ITimeScale {
 	indexToCoordinate(index: TimePointIndex): Coordinate;
 	visibleStrictRange(): RangeImpl<TimePointIndex> | null;
 	hasPoints(): boolean;
-	timeToIndex(time: InternalHorzScaleItem, findNearest: boolean): TimePointIndex | null;
+	timeToIndex(time: InternalHorzScaleItem, findNearest: boolean | MismatchDirection): TimePointIndex | null;
 
 	barSpacing(): number;
 	rightOffset(): number;
@@ -429,21 +430,43 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 		return this._points[index] ?? null;
 	}
 
-	public timeToIndex(time: InternalHorzScaleItem, findNearest: boolean): TimePointIndex | null {
+	public timeToIndex(time: InternalHorzScaleItem, findNearest: boolean | MismatchDirection): TimePointIndex | null {
 		if (this._points.length < 1) {
 			// no time points available
 			return null;
 		}
 
-		if (this._horzScaleBehavior.key(time) > this._horzScaleBehavior.key(this._points[this._points.length - 1].time)) {
-			// special case
-			return findNearest ? this._points.length - 1 as TimePointIndex : null;
+		// `findNearest === true` is kept for backwards compatibility and means "search to the right"
+		const searchMode: MismatchDirection = findNearest === true
+			? MismatchDirection.NearestRight
+			: findNearest === false ? MismatchDirection.None : findNearest;
+
+		const lastIndex = this._points.length - 1;
+		const timeKey = this._horzScaleBehavior.key(time);
+
+		if (timeKey > this._horzScaleBehavior.key(this._points[lastIndex].time)) {
+			// the requested time is after the last point on the scale
+			switch (searchMode) {
+				case MismatchDirection.NearestLeft:
+				case MismatchDirection.NearestRight:
+					return lastIndex as TimePointIndex;
+				default:
+					return null;
+			}
 		}
 
-		const index = lowerBound(this._points, this._horzScaleBehavior.key(time), (a: TimeScalePoint, b: InternalHorzScaleItemKey) => this._horzScaleBehavior.key(a.time) < b);
+		const index = lowerBound(this._points, timeKey, (a: TimeScalePoint, b: InternalHorzScaleItemKey) => this._horzScaleBehavior.key(a.time) < b);
 
-		if (this._horzScaleBehavior.key(time) < this._horzScaleBehavior.key(this._points[index].time)) {
-			return findNearest ? index as TimePointIndex : null;
+		if (timeKey < this._horzScaleBehavior.key(this._points[index].time)) {
+			// the requested time is between two points (or before the first one)
+			switch (searchMode) {
+				case MismatchDirection.NearestLeft:
+					return index > 0 ? index - 1 as TimePointIndex : null;
+				case MismatchDirection.NearestRight:
+					return index as TimePointIndex;
+				default:
+					return null;
+			}
 		}
 
 		return index as TimePointIndex;

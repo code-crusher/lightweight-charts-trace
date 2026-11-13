@@ -26,6 +26,10 @@ function beforeInteractions(container) {
 	const time = timeScale.coordinateToTime(300);
 	timeScale.timeToCoordinate(time);
 
+	timeScale.timeToIndex(time, true);
+	timeScale.timeToIndex(time, LightweightCharts.MismatchDirection.NearestLeft);
+	timeScale.timeToIndex(time, LightweightCharts.MismatchDirection.NearestRight);
+
 	timeScale.width();
 	timeScale.height();
 

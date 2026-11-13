@@ -10,6 +10,7 @@ import { clone, DeepPartial } from '../helpers/strict-type-checks';
 import { ChartModel } from '../model/chart-model';
 import { Coordinate } from '../model/coordinate';
 import { IHorzScaleBehavior, InternalHorzScaleItem } from '../model/ihorz-scale-behavior';
+import { MismatchDirection } from '../model/plot-list';
 import { IRange, Logical, LogicalRange, TimePointIndex } from '../model/time-data';
 import { HorzScaleOptions, TimeScale } from '../model/time-scale';
 
@@ -136,7 +137,7 @@ export class TimeScaleApi<HorzScaleItem> implements ITimeScaleApi<HorzScaleItem>
 		}
 	}
 
-	public timeToIndex(time: HorzScaleItem, findNearest: boolean): TimePointIndex | null {
+	public timeToIndex(time: HorzScaleItem, findNearest: boolean | MismatchDirection): TimePointIndex | null {
 		const timePoint = this._horzScaleBehavior.convertHorzItemToInternal(time);
 		return this._timeScale.timeToIndex(timePoint, findNearest);
 	}
