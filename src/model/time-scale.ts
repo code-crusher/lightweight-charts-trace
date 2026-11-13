@@ -329,6 +329,9 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 	private _barSpacing: number;
 	private _scrollStartPoint: Coordinate | null = null;
 	private _scaleStartPoint: Coordinate | null = null;
+	// the empty space before the first bar, in bars, that an explicitly set visible range asked for;
+	// with `fixLeftEdge` the view cannot be scrolled further left than this gap
+	private _leftGap: number = 0;
 	private readonly _tickMarks: TickMarks<HorzScaleItem> = new TickMarks();
 	private _formattedByWeight: Map<number, FormattedLabelsCache<HorzScaleItem>> = new Map();
 
@@ -728,6 +731,7 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 
 	public restoreDefault(): void {
 		this._visibleRangeInvalidated = true;
+		this._leftGap = 0;
 
 		this.setBarSpacing(this._options.barSpacing);
 
@@ -919,7 +923,17 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 				? pixelOffset / this.barSpacing()
 				: this._options.rightOffset;
 		}
+
+		// allow the empty space the range leaves before the first bar while correcting the offset,
+		// so that the left edge fixing does not push it away: the range is requested explicitly
+		const firstIndex = this._firstIndex();
+		this._leftGap = firstIndex !== null ? Math.max(0, firstIndex - range.left()) : 0;
+
 		this._correctOffset();
+
+		// the offset might have been clamped (for instance by the fixed right edge), so only keep
+		// the gap that actually made it into the resulting visible range
+		this._leftGap = this._leftGapBeforeFirstBar();
 		this._visibleRangeInvalidated = true;
 		this._model.recalculateAllPanes();
 		this._model.lightUpdate();
@@ -1067,12 +1081,18 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 		}
 
 		const baseIndex = this.baseIndex();
-		const newBarsLength = this._width / this._barSpacing;
 		const rightBorder = this._rightOffset + baseIndex;
-		const leftBorder = rightBorder - newBarsLength + 1;
+		const leftBorder = this._leftBorder();
 
 		const logicalRange = new RangeImpl(leftBorder as Logical, rightBorder as Logical);
 		this._setVisibleRange(new TimeScaleVisibleRange(logicalRange));
+	}
+
+	/**
+	 * The left border of the visible range (as a logical index) for the current bar spacing and right offset.
+	 */
+	private _leftBorder(): number {
+		return this._rightOffset + this.baseIndex() - this._width / this._barSpacing + 1;
 	}
 
 	private _correctBarSpacing(): void {
@@ -1158,7 +1178,38 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 			? this._width / this._barSpacing
 			: Math.min(Constants.MinVisibleBarsCount, this._points.length, this._width / this._barSpacing);
 
-		return firstIndex - baseIndex - 1 + barsEstimation;
+		// with a fixed left edge the view cannot be scrolled past the first bar, but it may keep the
+		// empty space before it that an explicitly set visible range asked for
+		const leftGap = this._options.fixLeftEdge ? this._leftGap : 0;
+
+		return firstIndex - baseIndex - 1 + barsEstimation - leftGap;
+	}
+
+	/**
+	 * The left border of the visible range that the left edge fixing allows, i.e. the first bar
+	 * shifted left by the gap that an explicitly set visible range asked for.
+	 */
+	private _firstIndexWithGap(): number | null {
+		const firstIndex = this._firstIndex();
+		if (firstIndex === null || !this._options.fixLeftEdge) {
+			return firstIndex;
+		}
+
+		return firstIndex - this._leftGap;
+	}
+
+	/**
+	 * The empty space before the first bar of the current visible range, in bars.
+	 * Unlike {@link visibleLogicalRange} it does not update the visible range, so it is safe to call
+	 * while the range is being changed.
+	 */
+	private _leftGapBeforeFirstBar(): number {
+		const firstIndex = this._firstIndex();
+		if (firstIndex === null) {
+			return 0;
+		}
+
+		return Math.max(0, firstIndex - this._leftBorder());
 	}
 
 	private _maxRightOffset(): number {
@@ -1241,7 +1292,9 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 			return;
 		}
 
-		const delta = visibleRange.left() - firstIndex;
+		// the gap before the first bar that an explicitly set range asked for is allowed to stay,
+		// so only the space beyond it is trimmed
+		const delta = visibleRange.left() - Math.floor(this._firstIndexWithGap() ?? firstIndex);
 		if (delta < 0) {
 			const leftEdgeOffset = this._rightOffset - delta - 1;
 			this.setRightOffset(leftEdgeOffset);

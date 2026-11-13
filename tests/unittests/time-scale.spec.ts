@@ -10,6 +10,7 @@ import { Time, UTCTimestamp } from '../../src/model/horz-scale-behavior-time/typ
 import { InternalHorzScaleItem } from '../../src/model/ihorz-scale-behavior';
 import { ITimeScaleAnimation } from '../../src/model/invalidate-mask';
 import { LocalizationOptions } from '../../src/model/localization-options';
+import { RangeImpl } from '../../src/model/range-impl';
 import { Logical, TickMarkWeightValue, TimePointIndex, TimeScalePoint } from '../../src/model/time-data';
 import { TimeScale } from '../../src/model/time-scale';
 
@@ -105,6 +106,98 @@ describe('TimeScale', () => {
 		expect(logicalRange).to.be.not.equal(null);
 		expect(logicalRange?.left()).to.be.equal(0);
 		expect(logicalRange?.right()).to.be.equal(1);
+	});
+
+	describe('fixLeftEdge and a logical range with a gap before the first bar', () => {
+		function createTimeScale(options: Partial<typeof timeScaleOptionsDefaults> = {}): TimeScale<Time> {
+			const ts = new TimeScale<Time>(
+				chartModelMock(),
+				{ ...timeScaleOptionsDefaults, fixLeftEdge: true, barSpacing: 1, minBarSpacing: 0.001, maxBarSpacing: 18, ...options },
+				fakeLocalizationOptions,
+				behavior
+			);
+			ts.setWidth(800);
+			ts.update(...tsUpdate(806));
+			ts.setBaseIndex(806 as TimePointIndex);
+			return ts;
+		}
+
+		it('keeps the gap before the first bar requested with setLogicalRange', () => {
+			const ts = createTimeScale();
+
+			ts.setLogicalRange({ from: -20.5 as Logical, to: 806 as Logical });
+
+			const logicalRange = ts.visibleLogicalRange();
+			expect(logicalRange).to.be.not.equal(null);
+			expect(logicalRange?.left()).to.be.closeTo(-20.5, 1e-6);
+			expect(logicalRange?.right()).to.be.closeTo(806, 1e-6);
+		});
+
+		it('keeps the gap before the first bar requested with setVisibleRange', () => {
+			const ts = createTimeScale();
+
+			ts.setVisibleRange(new RangeImpl(-20 as TimePointIndex, 806 as TimePointIndex));
+
+			const logicalRange = ts.visibleLogicalRange();
+			expect(logicalRange).to.be.not.equal(null);
+			expect(logicalRange?.left()).to.be.closeTo(-20, 1e-6);
+			expect(logicalRange?.right()).to.be.closeTo(806, 1e-6);
+		});
+
+		it('keeps the gap when the base index is moved by a data update', () => {
+			const ts = createTimeScale();
+			ts.setLogicalRange({ from: -20.5 as Logical, to: 806 as Logical });
+
+			// the view is shifted by the new bar, so the gap keeps its size relative to the first bar
+			ts.update(...tsUpdate(807));
+			ts.setBaseIndex(807 as TimePointIndex);
+
+			const logicalRange = ts.visibleLogicalRange();
+			expect(logicalRange).to.be.not.equal(null);
+			expect(logicalRange?.right()).to.be.closeTo(807, 1e-6);
+			// the gap is still there - the first bar is not pinned to the left edge
+			expect(logicalRange?.left()).to.be.lessThan(0);
+		});
+
+		it('still prevents scrolling further left than the first bar', () => {
+			const ts = createTimeScale();
+			ts.setLogicalRange({ from: -20.5 as Logical, to: 806 as Logical });
+
+			ts.startScroll(0 as Coordinate);
+			ts.scrollTo(4000 as Coordinate);
+			ts.endScroll();
+
+			const logicalRange = ts.visibleLogicalRange();
+			expect(logicalRange).to.be.not.equal(null);
+			expect(logicalRange?.left()).to.be.closeTo(-20.5, 1e-6);
+		});
+
+		it('does not keep a gap when the range starts at the first bar', () => {
+			const ts = createTimeScale();
+
+			ts.setLogicalRange({ from: 0 as Logical, to: 900 as Logical });
+			ts.startScroll(0 as Coordinate);
+			ts.scrollTo(4000 as Coordinate);
+			ts.endScroll();
+
+			const logicalRange = ts.visibleLogicalRange();
+			expect(logicalRange).to.be.not.equal(null);
+			expect(logicalRange?.left()).to.be.equal(0);
+		});
+
+		it('does not keep the gap after the time scale is reset', () => {
+			const ts = createTimeScale();
+			ts.setLogicalRange({ from: -20.5 as Logical, to: 806 as Logical });
+
+			ts.restoreDefault();
+			ts.startScroll(0 as Coordinate);
+			ts.scrollTo(4000 as Coordinate);
+			ts.endScroll();
+
+			const logicalRange = ts.visibleLogicalRange();
+			expect(logicalRange).to.be.not.equal(null);
+			expect(logicalRange?.left()).to.be.equal(0);
+		});
 	});
 
 	describe('timeToIndex', () => {
