@@ -8,6 +8,7 @@ export interface TimeAxisViewRendererData {
 	width: number;
 	text: string;
 	coordinate: number;
+	fixedCoordinate?: number;
 	color: string;
 	background: string;
 	visible: boolean;
@@ -20,6 +21,7 @@ const radius = 2;
 
 export class TimeAxisViewRenderer implements ITimeAxisViewRenderer {
 	private _data: TimeAxisViewRendererData | null;
+	private _renderCoordinate: number | null = null;
 
 	public constructor() {
 		this._data = null;
@@ -29,15 +31,52 @@ export class TimeAxisViewRenderer implements ITimeAxisViewRenderer {
 		this._data = data;
 	}
 
+	/**
+	 * The coordinate requested by the view, without any adjustment made by the axis layout. A fixed
+	 * coordinate takes precedence over it.
+	 */
+	public coordinate(): number {
+		return this._data?.fixedCoordinate ?? this._data?.coordinate ?? 0;
+	}
+
+	/**
+	 * Whether the view asks for the label to be drawn at a fixed coordinate.
+	 */
+	public isFixed(): boolean {
+		return this._data?.fixedCoordinate !== undefined;
+	}
+
+	/**
+	 * The coordinate the label is drawn at: the render coordinate assigned by the axis layout when
+	 * there is one, otherwise the coordinate requested by the view.
+	 */
+	public getRenderCoordinate(): number {
+		return this._renderCoordinate ?? this.coordinate();
+	}
+
+	/**
+	 * Assigns the coordinate to draw the label at. Pass `null` to draw it at the coordinate requested
+	 * by the view again.
+	 */
+	public setRenderCoordinate(value: number | null): void {
+		this._renderCoordinate = value;
+	}
+
+	/**
+	 * The width the label takes on the axis, including the space around the text, in media pixels.
+	 * Returns `0` for a label which is not drawn.
+	 */
+	public labelWidth(rendererOptions: TimeAxisViewRendererOptions, ctx: CanvasRenderingContext2D): number {
+		const textWidth = this._textWidth(rendererOptions, ctx);
+		return textWidth <= 0 ? 0 : textWidth + 2 * rendererOptions.paddingHorizontal;
+	}
+
 	public draw(target: CanvasRenderingTarget2D, rendererOptions: TimeAxisViewRendererOptions): void {
 		if (this._data === null || this._data.visible === false || this._data.text.length === 0) {
 			return;
 		}
 
-		const textWidth = target.useMediaCoordinateSpace(({ context: ctx }: MediaCoordinatesRenderingScope) => {
-			ctx.font = rendererOptions.font;
-			return Math.round(rendererOptions.widthCache.measureText(ctx, ensureNotNull(this._data).text, optimizationReplacementRe));
-		});
+		const textWidth = target.useMediaCoordinateSpace(({ context: ctx }: MediaCoordinatesRenderingScope) => this._textWidth(rendererOptions, ctx));
 		if (textWidth <= 0) {
 			return;
 		}
@@ -46,15 +85,24 @@ export class TimeAxisViewRenderer implements ITimeAxisViewRenderer {
 		const labelWidth = textWidth + 2 * horzMargin;
 		const labelWidthHalf = labelWidth / 2;
 		const timeScaleWidth = this._data.width;
-		let coordinate = this._data.coordinate;
-		let x1 = Math.floor(coordinate - labelWidthHalf) + 0.5;
+		let x1: number;
 
-		if (x1 < 0) {
-			coordinate = coordinate + Math.abs(0 - x1);
+		if (this._renderCoordinate === null) {
+			// no coordinate assigned by the axis layout: center the label on the requested coordinate
+			// and move it back inside the axis if it does not fit
+			let coordinate = this.coordinate();
 			x1 = Math.floor(coordinate - labelWidthHalf) + 0.5;
-		} else if (x1 + labelWidth > timeScaleWidth) {
-			coordinate = coordinate - Math.abs(timeScaleWidth - (x1 + labelWidth));
-			x1 = Math.floor(coordinate - labelWidthHalf) + 0.5;
+
+			if (x1 < 0) {
+				coordinate = coordinate + Math.abs(0 - x1);
+				x1 = Math.floor(coordinate - labelWidthHalf) + 0.5;
+			} else if (x1 + labelWidth > timeScaleWidth) {
+				coordinate = coordinate - Math.abs(timeScaleWidth - (x1 + labelWidth));
+				x1 = Math.floor(coordinate - labelWidthHalf) + 0.5;
+			}
+		} else {
+			// the axis layout has already placed the label, so draw it exactly where it asks
+			x1 = this._renderCoordinate - labelWidthHalf;
 		}
 
 		const x2 = x1 + labelWidth;
@@ -120,5 +168,14 @@ export class TimeAxisViewRenderer implements ITimeAxisViewRenderer {
 			ctx.translate(x1 + horzMargin, yText + textYCorrection);
 			ctx.fillText(data.text, 0, 0);
 		});
+	}
+
+	private _textWidth(rendererOptions: TimeAxisViewRendererOptions, ctx: CanvasRenderingContext2D): number {
+		if (this._data === null || this._data.visible === false || this._data.text.length === 0) {
+			return 0;
+		}
+
+		ctx.font = rendererOptions.font;
+		return Math.round(rendererOptions.widthCache.measureText(ctx, this._data.text, optimizationReplacementRe));
 	}
 }

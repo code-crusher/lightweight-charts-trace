@@ -24,6 +24,7 @@ import { Pane } from '../model/pane';
 import { TextWidthCache } from '../model/text-width-cache';
 import { IPaneRenderer } from '../renderers/ipane-renderer';
 import { TimeAxisViewRendererOptions } from '../renderers/itime-axis-view-renderer';
+import { TimeAxisViewRenderer } from '../renderers/time-axis-view-renderer';
 import { IAxisView } from '../views/pane/iaxis-view';
 
 import { createBoundCanvas, releaseCanvas } from './canvas-utils';
@@ -32,6 +33,7 @@ import { drawBackground, drawForeground, drawSourceViews } from './draw-function
 import { ITimeAxisViewsGetter } from './iaxis-view-getters';
 import { MouseEventHandler, MouseEventHandlers, MouseEventHandlerTouchEvent, TouchMouseEvent } from './mouse-event-handler';
 import { PriceAxisStub, PriceAxisStubParams } from './price-axis-stub';
+import { alignTimeAxisViews } from './time-axis-view-layout';
 
 const enum Constants {
 	BorderSize = 1,
@@ -457,10 +459,33 @@ export class TimeAxisWidget<HorzScaleItem> implements MouseEventHandlers, IDestr
 
 	private _drawLabels(sources: readonly IDataSource[], target: CanvasRenderingTarget2D): void {
 		const rendererOptions = this._getRendererOptions();
+		const renderers: TimeAxisViewRenderer[] = [];
 		for (const source of sources) {
 			for (const view of source.timeAxisViews()) {
-				view.renderer().draw(target, rendererOptions);
+				const renderer = view.renderer();
+				// the render coordinate assigned on the previous paint must not be reused
+				renderer.setRenderCoordinate(null);
+				renderers.push(renderer);
 			}
+		}
+
+		if (this._size.width > 0) {
+			const items = target.useMediaCoordinateSpace(({ context: ctx }: MediaCoordinatesRenderingScope) => renderers.map((renderer: TimeAxisViewRenderer) => ({
+				view: renderer,
+				width: renderer.labelWidth(rendererOptions, ctx),
+			})));
+
+			alignTimeAxisViews(items, this._size.width);
+		}
+
+		// fixed labels are drawn above the labels which the layout can move
+		const ordered = [
+			...renderers.filter((renderer: TimeAxisViewRenderer) => !renderer.isFixed()),
+			...renderers.filter((renderer: TimeAxisViewRenderer) => renderer.isFixed()),
+		];
+
+		for (const renderer of ordered) {
+			renderer.draw(target, rendererOptions);
 		}
 	}
 

@@ -19,6 +19,7 @@ export class CrosshairTimeAxisView implements ITimeAxisView {
 		text: '',
 		width: 0,
 		coordinate: NaN,
+		fixedCoordinate: undefined,
 		tickVisible: true,
 	};
 
@@ -70,6 +71,8 @@ export class CrosshairTimeAxisView implements ITimeAxisView {
 		}
 
 		data.coordinate = value.coordinate;
+		// the crosshair label follows the pointer, so it must not be moved by the axis layout
+		data.fixedCoordinate = value.coordinate;
 		const currentTime = timeScale.indexToTimeScalePoint(this._crosshair.appliedIndex());
 		data.text = timeScale.formatDateTime(ensureNotNull(currentTime));
 		data.visible = true;
