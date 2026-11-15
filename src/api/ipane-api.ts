@@ -119,6 +119,28 @@ export interface IPaneApi<HorzScaleItem> {
 	setStretchFactor(stretchFactor: number): void;
 
 	/**
+	 * Collapses the pane, hiding its content and letting other panes use the freed space.
+	 *
+	 * The height the pane had before collapsing is remembered and will be restored by a call to {@link IPaneApi.restore}.
+	 * Calling this method on an already collapsed pane has no effect.
+	 */
+	collapse(): void;
+
+	/**
+	 * Restores a previously collapsed pane, returning it to the height it had before collapsing.
+	 *
+	 * Calling this method on a pane that isn't collapsed has no effect.
+	 */
+	restore(): void;
+
+	/**
+	 * Returns whether the pane is currently collapsed.
+	 *
+	 * @returns `true` if the pane is collapsed, `false` otherwise.
+	 */
+	isCollapsed(): boolean;
+
+	/**
 	 * Creates a custom series with specified parameters.
 	 *
 	 * A custom series is a generic series which can be extended with a custom renderer to

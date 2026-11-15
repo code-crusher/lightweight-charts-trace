@@ -490,6 +490,8 @@ export interface IChartModelBase {
 	movePane(from: number, to: number): void;
 	removePane(index: number): void;
 	changePanesHeight(paneIndex: number, height: number): void;
+	collapsePane(paneIndex: number): void;
+	restorePane(paneIndex: number): void;
 
 	colorParser(): ColorParser;
 }
@@ -707,6 +709,18 @@ export class ChartModel<HorzScaleItem> implements IDestroyable, IChartModelBase 
 		this._timeScale.setWidth(this._width);
 		this._panes.forEach((pane: Pane) => pane.setWidth(width));
 		this.recalculateAllPanes();
+	}
+
+	public collapsePane(paneIndex: number): void {
+		assert(paneIndex >= 0 && paneIndex < this._panes.length, 'Invalid pane index');
+		this._panes[paneIndex].collapse();
+		this.fullUpdate();
+	}
+
+	public restorePane(paneIndex: number): void {
+		assert(paneIndex >= 0 && paneIndex < this._panes.length, 'Invalid pane index');
+		this._panes[paneIndex].restore();
+		this.fullUpdate();
 	}
 
 	public removePane(index: number): void {

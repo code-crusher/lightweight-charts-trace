@@ -416,6 +416,12 @@ export class PaneWidget implements IDestroyable, MouseEventHandlers {
 	}
 
 	public setSize(newSize: Size): void {
+		if (this._state !== null && this._state.isCollapsed() && newSize.height > 0) {
+			// a collapsed pane is rendered with zero height
+			// keep its size so it can be fully restored on restore()
+			newSize = size({ width: newSize.width, height: 0 });
+		}
+
 		if (equalSizes(this._size, newSize)) {
 			return;
 		}

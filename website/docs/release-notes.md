@@ -16,6 +16,12 @@ toc_max_heading_level: 2
 
 <!-- markdownlint-disable no-emphasis-as-heading -->
 <!-- ^ using emphasis as headings so we don't have duplicate headers -->
+## Unreleased
+
+**Enhancements**
+
+- Added the ability to collapse and restore panes via the [Pane API](/api/interfaces/IPaneApi.md): `collapse()` hides a pane and lets other panes use the freed space, `restore()` returns it to the height it had before collapsing, and `isCollapsed()` reports the current state. This is useful, for example, to collapse a pane automatically when all of its series are hidden. (fixes [#1802](https://github.com/tradingview/lightweight-charts/issues/1802))
+
 ## 5.2.1
 
 **Enhancements**

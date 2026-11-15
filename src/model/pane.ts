@@ -41,6 +41,7 @@ export class Pane implements IDestroyable, IPrimitiveHitTestSource {
 	private _height: number = 0;
 	private _width: number = 0;
 	private _stretchFactor: number = DEFAULT_STRETCH_FACTOR;
+	private _isCollapsed: boolean = false;
 	private _cachedOrderedSources: readonly IPriceDataSource[] | null = null;
 	private _cachedOrderedSourcesForRendering: {
 		base: readonly IPriceDataSource[];
@@ -137,11 +138,33 @@ export class Pane implements IDestroyable, IPrimitiveHitTestSource {
 	}
 
 	public stretchFactor(): number {
-		return this._stretchFactor;
+		return this._isCollapsed ? 0 : this._stretchFactor;
 	}
 
 	public setStretchFactor(factor: number): void {
 		this._stretchFactor = factor;
+	}
+
+	public isCollapsed(): boolean {
+		return this._isCollapsed;
+	}
+
+	public collapse(): void {
+		if (this._isCollapsed) {
+			return;
+		}
+
+		this._isCollapsed = true;
+		this.updateAllSources();
+	}
+
+	public restore(): void {
+		if (!this._isCollapsed) {
+			return;
+		}
+
+		this._isCollapsed = false;
+		this.updateAllSources();
 	}
 
 	public model(): IChartModelBase {

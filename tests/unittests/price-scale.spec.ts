@@ -86,6 +86,8 @@ describe('PriceScale', () => {
 			movePane: () => {},
 			removePane: () => {},
 			changePanesHeight: () => {},
+			collapsePane: () => {},
+			restorePane: () => {},
 			colorParser: () => new ColorParser([], new Map()),
 		};
 

@@ -53,6 +53,20 @@ export class PaneApi<HorzScaleItem> implements IPaneApi<HorzScaleItem> {
 		this._chartWidget.model().fullUpdate();
 	}
 
+	public collapse(): void {
+		const chartModel = this._chartWidget.model();
+		chartModel.collapsePane(chartModel.getPaneIndex(this._pane));
+	}
+
+	public restore(): void {
+		const chartModel = this._chartWidget.model();
+		chartModel.restorePane(chartModel.getPaneIndex(this._pane));
+	}
+
+	public isCollapsed(): boolean {
+		return this._pane.isCollapsed();
+	}
+
 	public paneIndex(): number {
 		return this._chartWidget.model().getPaneIndex(this._pane);
 	}
