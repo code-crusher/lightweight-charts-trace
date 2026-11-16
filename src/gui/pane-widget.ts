@@ -310,6 +310,8 @@ export class PaneWidget implements IDestroyable, MouseEventHandlers {
 		if (this._state === null) {
 			return;
 		}
+		this._onMouseEvent();
+		this._setCrosshairPosition(event.localX, event.localY, event);
 		this._fireClickedDelegate(event);
 	}
 
