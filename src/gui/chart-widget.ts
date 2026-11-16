@@ -70,6 +70,7 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 	private _timeAxisWidget: TimeAxisWidget<HorzScaleItem>;
 	private _invalidateMask: InvalidateMask | null = null;
 	private _drawPlanned: boolean = false;
+	private _drawing: boolean = false;
 	private _clicked: Delegate<MouseEventParamsImplSupplier> = new Delegate();
 	private _dblClicked: Delegate<MouseEventParamsImplSupplier> = new Delegate();
 	private _crosshairMoved: Delegate<MouseEventParamsImplSupplier> = new Delegate();
@@ -246,6 +247,43 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 
 		if (this._options.timeScale.visible) {
 			this._timeAxisWidget.paint(invalidateMask.fullInvalidation());
+		}
+	}
+
+	/**
+	 * Applies any time scale changes requested since the last draw (fitContent,
+	 * setVisibleLogicalRange, scrollToPosition and so on) to the model right away,
+	 * so that getters on top of the model reflect them before the next animation frame.
+	 * Animation frames are left for the next animation frame, which owns their timing.
+	 * Drawing still happens on the next frame as usual.
+	 */
+	public flushPendingTimeScaleInvalidations(): void {
+		// while drawing the pending invalidations are owned by the draw itself
+		if (this._drawing || this._invalidateMask === null) {
+			return;
+		}
+
+		const mask = this._invalidateMask;
+		this._invalidateMask = null;
+
+		const time = performance.now();
+		const deferred: TimeScaleInvalidation[] = [];
+		for (const tsInvalidation of mask.timeScaleInvalidations()) {
+			// animation frames are applied by the animation frame loop with its own timestamps
+			if (tsInvalidation.type === TimeScaleInvalidationType.Animation || tsInvalidation.type === TimeScaleInvalidationType.StopAnimation) {
+				deferred.push(tsInvalidation);
+				continue;
+			}
+
+			this._applyTimeScaleInvalidation(tsInvalidation, time);
+		}
+
+		if (deferred.length > 0) {
+			const deferredMask = InvalidateMask.light();
+			for (const tsInvalidation of deferred) {
+				deferredMask.applyTimeScaleInvalidation(tsInvalidation);
+			}
+			this._invalidateMask = deferredMask;
 		}
 	}
 
@@ -623,42 +661,49 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 	private _drawImpl(invalidateMask: InvalidateMask, time: number): void {
 		const invalidationType = invalidateMask.fullInvalidation();
 
-		// actions for full invalidation ONLY (not shared with light)
-		if (invalidationType === InvalidationLevel.Full) {
-			this._updateGui();
-		}
-
-		// light or full invalidate actions
-		if (
-			invalidationType === InvalidationLevel.Full ||
-			invalidationType === InvalidationLevel.Light
-		) {
-			this._applyMomentaryAutoScale(invalidateMask);
-			this._applyTimeScaleInvalidations(invalidateMask, time);
-
-			this._timeAxisWidget.update();
-			this._paneWidgets.forEach((pane: PaneWidget) => {
-				pane.updatePriceAxisWidgets();
-			});
-
-			// In the case a full invalidation has been postponed during the draw, reapply
-			// the timescale invalidations. A full invalidation would mean there is a change
-			// in the timescale width (caused by price scale changes) that needs to be drawn
-			// right away to avoid flickering.
-			if (this._invalidateMask?.fullInvalidation() === InvalidationLevel.Full) {
-				this._invalidateMask.merge(invalidateMask);
-
+		// while a draw owns the pending invalidations, a getter must not flush them
+		const drawing = this._drawing;
+		this._drawing = true;
+		try {
+			// actions for full invalidation ONLY (not shared with light)
+			if (invalidationType === InvalidationLevel.Full) {
 				this._updateGui();
-
-				this._applyMomentaryAutoScale(this._invalidateMask);
-				this._applyTimeScaleInvalidations(this._invalidateMask, time);
-
-				invalidateMask = this._invalidateMask;
-				this._invalidateMask = null;
 			}
-		}
 
-		this.paint(invalidateMask);
+			// light or full invalidate actions
+			if (
+				invalidationType === InvalidationLevel.Full ||
+				invalidationType === InvalidationLevel.Light
+			) {
+				this._applyMomentaryAutoScale(invalidateMask);
+				this._applyTimeScaleInvalidations(invalidateMask, time);
+
+				this._timeAxisWidget.update();
+				this._paneWidgets.forEach((pane: PaneWidget) => {
+					pane.updatePriceAxisWidgets();
+				});
+
+				// In the case a full invalidation has been postponed during the draw, reapply
+				// the timescale invalidations. A full invalidation would mean there is a change
+				// in the timescale width (caused by price scale changes) that needs to be drawn
+				// right away to avoid flickering.
+				if (this._invalidateMask?.fullInvalidation() === InvalidationLevel.Full) {
+					this._invalidateMask.merge(invalidateMask);
+
+					this._updateGui();
+
+					this._applyMomentaryAutoScale(this._invalidateMask);
+					this._applyTimeScaleInvalidations(this._invalidateMask, time);
+
+					invalidateMask = this._invalidateMask;
+					this._invalidateMask = null;
+				}
+			}
+
+			this.paint(invalidateMask);
+		} finally {
+			this._drawing = drawing;
+		}
 	}
 
 	private _applyTimeScaleInvalidations(invalidateMask: InvalidateMask, time: number): void {

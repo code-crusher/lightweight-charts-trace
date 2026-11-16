@@ -155,7 +155,7 @@ export class ChartApi<HorzScaleItem> implements IChartApiBase<HorzScaleItem>, Da
 		);
 
 		const model = this._chartWidget.model();
-		this._timeScaleApi = new TimeScaleApi(model, this._chartWidget.timeAxisWidget(), this._horzScaleBehavior);
+		this._timeScaleApi = new TimeScaleApi(model, this._chartWidget, this._chartWidget.timeAxisWidget(), this._horzScaleBehavior);
 	}
 
 	public remove(): void {

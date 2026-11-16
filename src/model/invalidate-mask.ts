@@ -166,6 +166,14 @@ export class InvalidateMask {
 		});
 	}
 
+	/**
+	 * Appends a single time scale invalidation, preserving its semantics
+	 * (e.g. fit content replaces the previous target range, animations are stopped).
+	 */
+	public applyTimeScaleInvalidation(invalidation: TimeScaleInvalidation): void {
+		this._applyTimeScaleInvalidation(invalidation);
+	}
+
 	public static light(): InvalidateMask {
 		return new InvalidateMask(InvalidationLevel.Light);
 	}

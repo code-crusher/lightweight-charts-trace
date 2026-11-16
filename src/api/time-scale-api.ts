@@ -1,5 +1,6 @@
 import { Size } from 'fancy-canvas';
 
+import { ChartWidget } from '../gui/chart-widget';
 import { TimeAxisWidget } from '../gui/time-axis-widget';
 
 import { assert } from '../helpers/assertions';
@@ -26,6 +27,7 @@ const enum Constants {
 export class TimeScaleApi<HorzScaleItem> implements ITimeScaleApi<HorzScaleItem>, IDestroyable {
 	private _model: ChartModel<HorzScaleItem>;
 	private _timeScale: TimeScale<HorzScaleItem>;
+	private readonly _chartWidget: ChartWidget<HorzScaleItem>;
 	private readonly _timeAxisWidget: TimeAxisWidget<HorzScaleItem>;
 	private readonly _timeRangeChanged: Delegate<IRange<HorzScaleItem> | null> = new Delegate();
 	private readonly _logicalRangeChanged: Delegate<LogicalRange | null> = new Delegate();
@@ -33,9 +35,10 @@ export class TimeScaleApi<HorzScaleItem> implements ITimeScaleApi<HorzScaleItem>
 
 	private readonly _horzScaleBehavior: IHorzScaleBehavior<HorzScaleItem>;
 
-	public constructor(model: ChartModel<HorzScaleItem>, timeAxisWidget: TimeAxisWidget<HorzScaleItem>, horzScaleBehavior: IHorzScaleBehavior<HorzScaleItem>) {
+	public constructor(model: ChartModel<HorzScaleItem>, chartWidget: ChartWidget<HorzScaleItem>, timeAxisWidget: TimeAxisWidget<HorzScaleItem>, horzScaleBehavior: IHorzScaleBehavior<HorzScaleItem>) {
 		this._model = model;
 		this._timeScale = model.timeScale();
+		this._chartWidget = chartWidget;
 		this._timeAxisWidget = timeAxisWidget;
 		this._timeScale.visibleBarsChanged().subscribe(this._onVisibleBarsChanged.bind(this));
 		this._timeScale.logicalRangeChanged().subscribe(this._onVisibleLogicalRangeChanged.bind(this));
@@ -54,6 +57,7 @@ export class TimeScaleApi<HorzScaleItem> implements ITimeScaleApi<HorzScaleItem>
 	}
 
 	public scrollPosition(): number {
+		this._chartWidget.flushPendingTimeScaleInvalidations();
 		return this._timeScale.rightOffset();
 	}
 
@@ -71,16 +75,11 @@ export class TimeScaleApi<HorzScaleItem> implements ITimeScaleApi<HorzScaleItem>
 	}
 
 	public getVisibleRange(): IRange<HorzScaleItem> | null {
-		const timeRange = this._timeScale.visibleTimeRange();
+		// fitContent and the like are applied on the next animation frame,
+		// so a read right after such a call must flush the pending changes first
+		this._chartWidget.flushPendingTimeScaleInvalidations();
 
-		if (timeRange === null) {
-			return null;
-		}
-
-		return {
-			from: timeRange.from.originalTime as HorzScaleItem,
-			to: timeRange.to.originalTime as HorzScaleItem,
-		};
+		return this._getVisibleRangeWithoutFlushing();
 	}
 
 	public setVisibleRange(range: IRange<HorzScaleItem>): void {
@@ -94,15 +93,11 @@ export class TimeScaleApi<HorzScaleItem> implements ITimeScaleApi<HorzScaleItem>
 	}
 
 	public getVisibleLogicalRange(): LogicalRange | null {
-		const logicalRange = this._timeScale.visibleLogicalRange();
-		if (logicalRange === null) {
-			return null;
-		}
+		// fitContent and the like are applied on the next animation frame,
+		// so a read right after such a call must flush the pending changes first
+		this._chartWidget.flushPendingTimeScaleInvalidations();
 
-		return {
-			from: logicalRange.left(),
-			to: logicalRange.right(),
-		};
+		return this._getVisibleLogicalRangeWithoutFlushing();
 	}
 
 	public setVisibleLogicalRange(range: IRange<number>): void {
@@ -204,15 +199,44 @@ export class TimeScaleApi<HorzScaleItem> implements ITimeScaleApi<HorzScaleItem>
 		};
 	}
 
+	private _getVisibleRangeWithoutFlushing(): IRange<HorzScaleItem> | null {
+		const timeRange = this._timeScale.visibleTimeRange();
+
+		if (timeRange === null) {
+			return null;
+		}
+
+		return {
+			from: timeRange.from.originalTime as HorzScaleItem,
+			to: timeRange.to.originalTime as HorzScaleItem,
+		};
+	}
+
+	private _getVisibleLogicalRangeWithoutFlushing(): LogicalRange | null {
+		const logicalRange = this._timeScale.visibleLogicalRange();
+		if (logicalRange === null) {
+			return null;
+		}
+
+		return {
+			from: logicalRange.left(),
+			to: logicalRange.right(),
+		};
+	}
+
 	private _onVisibleBarsChanged(): void {
 		if (this._timeRangeChanged.hasListeners()) {
-			this._timeRangeChanged.fire(this.getVisibleRange());
+			// the event reports the change which has just been applied to the time scale,
+			// so there is nothing to flush here - a flush could even reenter
+			this._timeRangeChanged.fire(this._getVisibleRangeWithoutFlushing());
 		}
 	}
 
 	private _onVisibleLogicalRangeChanged(): void {
 		if (this._logicalRangeChanged.hasListeners()) {
-			this._logicalRangeChanged.fire(this.getVisibleLogicalRange());
+			// the event reports the change which has just been applied to the time scale,
+			// so there is nothing to flush here - a flush could even reenter
+			this._logicalRangeChanged.fire(this._getVisibleLogicalRangeWithoutFlushing());
 		}
 	}
 
