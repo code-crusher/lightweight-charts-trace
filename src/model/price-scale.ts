@@ -260,6 +260,8 @@ export class PriceScale {
 	private _onMarksChanged: Delegate = new Delegate();
 
 	private _modeChanged: Delegate<PriceScaleState, PriceScaleState> = new Delegate();
+	private _autoScaleChanged: Delegate<boolean> = new Delegate();
+	private _notifiedAutoScale: boolean;
 
 	private _dataSources: IPriceDataSource[] = [];
 	private _formatterSource: IPriceDataSource | null = null;
@@ -280,6 +282,7 @@ export class PriceScale {
 		this._layoutOptions = layoutOptions;
 		this._localizationOptions = localizationOptions;
 		this._colorParser = colorParser;
+		this._notifiedAutoScale = options.autoScale;
 		this._markBuilder = new PriceTickMarkBuilder(
 			this,
 			100,
@@ -323,6 +326,8 @@ export class PriceScale {
 			this._invalidateInternalHeightCache();
 			this._marksCache = null;
 		}
+
+		this._notifyAutoScaleChanged();
 	}
 
 	public isAutoScale(): boolean {
@@ -412,10 +417,15 @@ export class PriceScale {
 		}
 
 		this._modeChanged.fire(oldMode, this.mode());
+		this._notifyAutoScaleChanged();
 	}
 
 	public modeChanged(): ISubscription<PriceScaleState, PriceScaleState> {
 		return this._modeChanged;
+	}
+
+	public autoScaleChanged(): ISubscription<boolean> {
+		return this._autoScaleChanged;
 	}
 
 	public fontSize(): number {
@@ -969,6 +979,21 @@ export class PriceScale {
 	private _onIsInvertedChanged(): void {
 		this._marksCache = null;
 		this._markBuilder.rebuildTickMarks();
+	}
+
+	/**
+	 * Fires the auto scale changed event if the auto scale mode differs from the last notified one.
+	 *
+	 * The mode is changed in a few different places (options, mode changes, UI interactions), so
+	 * this is called after any of them to notify subscribers with the final value.
+	 */
+	private _notifyAutoScaleChanged(): void {
+		if (this._notifiedAutoScale === this._options.autoScale) {
+			return;
+		}
+
+		this._notifiedAutoScale = this._options.autoScale;
+		this._autoScaleChanged.fire(this._options.autoScale);
 	}
 
 	// eslint-disable-next-line complexity

@@ -3,6 +3,7 @@ import { IChartWidgetBase } from '../gui/chart-widget';
 import { ensureNotNull } from '../helpers/assertions';
 import { DeepPartial } from '../helpers/strict-type-checks';
 
+import type { PriceScaleOnPane } from '../model/chart-model';
 import { isDefaultPriceScale } from '../model/default-price-scale';
 import { PriceRangeImpl } from '../model/price-range-impl';
 import { createPriceScaleOptions, PriceScale, PriceScaleOptions } from '../model/price-scale';
@@ -10,7 +11,7 @@ import { convertPriceRangeFromLog } from '../model/price-scale-conversions';
 import { precisionByMinMove } from '../model/series-options';
 import { IRange } from '../model/time-data';
 
-import { IPriceScaleApi } from './iprice-scale-api';
+import { AutoScaleChangeHandler, IPriceScaleApi } from './iprice-scale-api';
 
 export class PriceScaleApi implements IPriceScaleApi {
 	private _chartWidget: IChartWidgetBase;
@@ -81,6 +82,20 @@ export class PriceScaleApi implements IPriceScaleApi {
 
 	public setAutoScale(on: boolean): void {
 		this.applyOptions({ autoScale: on });
+	}
+
+	public subscribeAutoScaleChange(handler: AutoScaleChangeHandler): void {
+		this._priceScale().autoScaleChanged().subscribe(handler);
+	}
+
+	public unsubscribeAutoScaleChange(handler: AutoScaleChangeHandler): void {
+		// the price scale might have been removed (e.g. an overlay scale without series),
+		// in which case there is nothing left to unsubscribe from
+		this._findPriceScale()?.priceScale.autoScaleChanged().unsubscribe(handler);
+	}
+
+	private _findPriceScale(): PriceScaleOnPane | null {
+		return this._chartWidget.model().findPriceScale(this._priceScaleId, this._paneIndex);
 	}
 
 	private _priceScale(): PriceScale {

@@ -36,6 +36,28 @@ Similarly, to access the API object for the price scale that a series is attache
 
 See the [Two price scales](/examples/price-scales/two-price-scales), [Inverted price scale](/examples/price-scales/inverted-price-scale), [Price scale modes](/examples/price-scales/price-scale-modes), and [Custom price format](/examples/price-scales/custom-price-format) examples.
 
+## Track auto scale changes
+
+Autoscaling adjusts the price scale to fit the visible data.
+It is enabled by default and turns itself off when a user manually scales or scrolls the price scale, for example by dragging the price axis.
+Double-clicking the price axis, or calling [`setAutoScale`](/api/interfaces/IPriceScaleApi.md#setautoscale), turns autoscaling back on.
+
+To keep an external source of truth in sync with the price scale, subscribe to auto scale changes using [`subscribeAutoScaleChange`](/api/interfaces/IPriceScaleApi.md#subscribeautoscalechange).
+The handler is called with the new auto scale value whenever it changes, whether programmatically or through user interaction.
+
+```ts
+const priceScale = chart.priceScale('right');
+
+const handleAutoScaleChange = (autoScale: boolean) => {
+    // update your own state
+};
+
+priceScale.subscribeAutoScaleChange(handleAutoScaleChange);
+
+// later, when the handler is no longer needed
+priceScale.unsubscribeAutoScaleChange(handleAutoScaleChange);
+```
+
 ## Remove price scale
 
 The default left and right price scales cannot be removed, you can only hide them by setting the [`visible`](/api/interfaces/PriceScaleOptions.md#visible) option to `false`.

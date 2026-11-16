@@ -16,6 +16,18 @@ toc_max_heading_level: 2
 
 <!-- markdownlint-disable no-emphasis-as-heading -->
 <!-- ^ using emphasis as headings so we don't have duplicate headers -->
+<!--
+
+Unreleased
+
+## 5.3.0
+
+**Enhancements**
+
+- Added `subscribeAutoScaleChange` and `unsubscribeAutoScaleChange` methods to `IPriceScaleApi`. The handler is notified whenever the auto scale mode of a price scale changes, including changes caused by user interactions such as dragging or double-clicking the price axis, which makes it possible to keep an external source of truth in sync with the chart. (fixes [#1770](https://github.com/tradingview/lightweight-charts/issues/1770))
+
+-->
+
 ## 5.2.1
 
 **Enhancements**
