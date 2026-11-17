@@ -33,7 +33,7 @@ import { type IChartApiBase } from './ichart-api';
 import { IPaneApi } from './ipane-api';
 import { IPriceLine } from './iprice-line';
 import { IPriceScaleApi } from './iprice-scale-api';
-import { BarsInfo, DataChangedHandler, DataChangedScope, ISeriesApi } from './iseries-api';
+import { BarsInfo, DataChangedHandler, DataChangedScope, ISeriesApi, SeriesFulfilledData } from './iseries-api';
 import { ISeriesPrimitive } from './iseries-primitive-api';
 import { priceLineOptionsDefaults } from './options/price-line-options-defaults';
 import { PriceLine } from './price-line-api';
@@ -162,7 +162,7 @@ export class SeriesApi<
 		this._onDataChanged('update');
 	}
 
-	public pop(count: number = 1): TData[] {
+	public pop(count: number = 1): SeriesFulfilledData<TData, TSeriesType, HorzScaleItem>[] {
 		const poppedRows = this._dataUpdatesConsumer.popData(this._series, count);
 
 		if (poppedRows.length !== 0) {
@@ -170,10 +170,10 @@ export class SeriesApi<
 		}
 
 		const creator = getSeriesDataCreator<TSeriesType, HorzScaleItem>(this.seriesType());
-		return poppedRows.map((row: SeriesPlotRow<TSeriesType>) => creator(row) as TData);
+		return poppedRows.map((row: SeriesPlotRow<TSeriesType>) => creator(row) as SeriesFulfilledData<TData, TSeriesType, HorzScaleItem>);
 	}
 
-	public dataByIndex(logicalIndex: number, mismatchDirection?: MismatchDirection): TData | null {
+	public dataByIndex(logicalIndex: number, mismatchDirection?: MismatchDirection): SeriesFulfilledData<TData, TSeriesType, HorzScaleItem> | null {
 		const data = this._series.bars().search(logicalIndex as unknown as TimePointIndex, mismatchDirection);
 		if (data === null) {
 			// actually it can be a whitespace
@@ -181,13 +181,13 @@ export class SeriesApi<
 		}
 
 		const creator = getSeriesDataCreator<TSeriesType, HorzScaleItem>(this.seriesType());
-		return creator(data) as TData | null;
+		return creator(data) as SeriesFulfilledData<TData, TSeriesType, HorzScaleItem> | null;
 	}
 
-	public data(): readonly TData[] {
+	public data(): readonly SeriesFulfilledData<TData, TSeriesType, HorzScaleItem>[] {
 		const seriesCreator = getSeriesDataCreator(this.seriesType());
 		const rows = this._series.bars().rows();
-		return rows.map((row: SeriesPlotRow<TSeriesType>) => seriesCreator(row) as TData);
+		return rows.map((row: SeriesPlotRow<TSeriesType>) => seriesCreator(row) as SeriesFulfilledData<TData, TSeriesType, HorzScaleItem>);
 	}
 
 	public subscribeDataChanged(handler: DataChangedHandler): void {

@@ -10,7 +10,7 @@ import {
 } from '../../src';
 import { Mutable } from '../../src/helpers/mutable';
 import { ChartOptionsImpl } from '../../src/model/chart-model';
-import { BarData, LineData, SeriesDataItemTypeMap, WhitespaceData } from '../../src/model/data-consumer';
+import { BarData, LineData, SeriesDataItemTypeMap } from '../../src/model/data-consumer';
 import { Time } from '../../src/model/horz-scale-behavior-time/types';
 import { DataItem, HorzScaleItemConverterToInternalObj, IHorzScaleBehavior, InternalHorzScaleItem } from '../../src/model/ihorz-scale-behavior';
 import { LocalizationOptions } from '../../src/model/localization-options';
@@ -58,10 +58,17 @@ barSeries.setData([
 	// @ts-expect-error wrong data type
 	{ time: '2018-12-03', value: 27.02 },
 ]);
-barSeries.data() satisfies readonly (WhitespaceData<Time> | BarData<Time>)[];
-barSeries.data() satisfies readonly (WhitespaceData<Time>)[];
+barSeries.data() satisfies readonly (BarData<Time>)[];
 // @ts-expect-error wrong data type
 barSeries.data() satisfies readonly (LineData<Time>)[];
+// whitespace items are excluded from the data getters, so bar fields are
+// accessible without narrowing (issue #1699)
+const barDataItem = barSeries.dataByIndex(0);
+if (barDataItem !== null) {
+	barDataItem.open satisfies number;
+	// @ts-expect-error bar series data has no `value` field
+	void barDataItem.value;
+}
 barSeries.options() satisfies Readonly<BarSeriesOptions>;
 // @ts-expect-error wrong options type
 barSeries.options() satisfies Readonly<LineSeriesOptions>;

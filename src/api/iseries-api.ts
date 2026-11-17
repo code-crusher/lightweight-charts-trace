@@ -2,7 +2,7 @@ import { IPriceFormatter } from '../formatters/iprice-formatter';
 
 import { BarPrice } from '../model/bar';
 import { Coordinate } from '../model/coordinate';
-import { SeriesDataItemTypeMap } from '../model/data-consumer';
+import { FulfilledData, SeriesDataItemTypeMap, WhitespaceData } from '../model/data-consumer';
 import { Time } from '../model/horz-scale-behavior-time/types';
 import { LastValueDataResult } from '../model/iseries';
 import { MismatchDirection } from '../model/plot-list';
@@ -23,6 +23,19 @@ import { ISeriesPrimitive } from './iseries-primitive-api';
  * The extent of the data change.
  */
 export type DataChangedScope = 'full' | 'update';
+
+/**
+ * Resolves the type of data returned by the series data getters (`data`, `dataByIndex`, `pop`).
+ *
+ * Whitespace items are never returned by these methods because a series stores only
+ * the data items with values, so the whitespace part of the data type union is excluded.
+ * For a custom series data type there is no way to distinguish fulfilled items
+ * from whitespace ones statically, so the type is returned as is.
+ */
+export type SeriesFulfilledData<TData, TSeriesType extends SeriesType, HorzScaleItem> =
+	TSeriesType extends 'Custom'
+		? TData
+		: Extract<TData, FulfilledData<HorzScaleItem>>;
 
 /**
  * A custom function use to handle data changed events.
@@ -56,7 +69,7 @@ export interface BarsInfo<HorzScaleItem> extends Partial<IRange<HorzScaleItem>> 
 export interface ISeriesApi<
 	TSeriesType extends SeriesType,
 	HorzScaleItem = Time,
-	TData = SeriesDataItemTypeMap<HorzScaleItem>[TSeriesType],
+	TData extends WhitespaceData<HorzScaleItem> = SeriesDataItemTypeMap<HorzScaleItem>[TSeriesType],
 	TOptions = SeriesOptionsMap[TSeriesType],
 	TPartialOptions = SeriesPartialOptionsMap[TSeriesType],
 	> {
@@ -193,14 +206,14 @@ export interface ISeriesApi<
 	 * Removes one or more data items from the end of the series.
 	 *
 	 * @param count - The number of data items to remove.
-	 * @returns The removed data items.
+	 * @returns The removed data items. Whitespace items are never returned because they are not stored by the series.
 	 * @example Removing one data item from a series
 	 * ```js
 	 * const removedData = lineSeries.pop(1);
 	 * console.log(removedData);
 	 * ```
 	 */
-	pop(count: number): TData[];
+	pop(count: number): SeriesFulfilledData<TData, TSeriesType, HorzScaleItem>[];
 
 	/**
 	 * Returns a bar data by provided logical index.
@@ -211,13 +224,13 @@ export interface ISeriesApi<
 	 *
 	 * @param logicalIndex - Logical index
 	 * @param mismatchDirection - Search direction if no data found at provided logical index.
-	 * @returns The data item at the logical index, or `null` if there is none.
+	 * @returns The data item at the logical index, or `null` if there is none. Whitespace items are never returned because they are not stored by the series.
 	 * @example
 	 * ```js
 	 * const data = series.dataByIndex(10, LightweightCharts.MismatchDirection.NearestLeft);
 	 * ```
 	 */
-	dataByIndex(logicalIndex: number, mismatchDirection?: MismatchDirection): TData | null;
+	dataByIndex(logicalIndex: number, mismatchDirection?: MismatchDirection): SeriesFulfilledData<TData, TSeriesType, HorzScaleItem> | null;
 
 	/**
 	 * Returns all the bar data for the series.
@@ -232,7 +245,7 @@ export interface ISeriesApi<
 	 * const data = series.data();
 	 * ```
 	 */
-	data(): readonly TData[];
+	data(): readonly SeriesFulfilledData<TData, TSeriesType, HorzScaleItem>[];
 
 	/**
 	 * Subscribe to the data changed event. This event is fired whenever the `update` or `setData` method is evoked

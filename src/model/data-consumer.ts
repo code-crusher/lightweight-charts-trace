@@ -236,6 +236,15 @@ export interface SeriesDataItemTypeMap<HorzScaleItem = Time> {
 	Custom: CustomData<HorzScaleItem> | CustomSeriesWhitespaceData<HorzScaleItem>;
 }
 
+/**
+ * A union of the data types of all the built-in series which contain a value,
+ * i.e. every data item type except {@link WhitespaceData}.
+ *
+ * Note that it can't be calculated with `Exclude<..., WhitespaceData>` because
+ * every data item type structurally extends {@link WhitespaceData} (they all have `time`).
+ */
+export type FulfilledData<HorzScaleItem = Time> = SingleValueData<HorzScaleItem> | OhlcData<HorzScaleItem>;
+
 export interface DataUpdatesConsumer<TSeriesType extends SeriesType, HorzScaleItem = Time> {
 	applyNewData(series: Series<TSeriesType>, data: SeriesDataItemTypeMap<HorzScaleItem>[TSeriesType][]): void;
 	updateData(series: Series<TSeriesType>, data: SeriesDataItemTypeMap<HorzScaleItem>[TSeriesType], historicalUpdate: boolean): void;
