@@ -16,6 +16,11 @@ function beforeInteractions(container) {
 		addDefaultPane: false,
 	});
 
+	// there is no pane to measure yet, so the width must be 0 rather than throwing (see #1672)
+	if (chart.priceScale('left').width() !== 0 || chart.priceScale('right').width() !== 0) {
+		throw new Error('Width of a price axis should be 0 when the chart has no panes');
+	}
+
 	const pane0 = chart.addPane(true);
 
 	const mainSeries = chart.addSeries(LightweightCharts.LineSeries, {}, pane0.paneIndex());

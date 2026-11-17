@@ -300,15 +300,17 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 	}
 
 	public getPriceAxisWidth(position: DefaultPriceScaleId): number {
+		// the axis visibility is read from the first pane widget,
+		// so there is nothing to measure until at least one pane exists
+		if (this._paneWidgets.length === 0) {
+			return 0;
+		}
+
 		if (position === DefaultPriceScaleId.Left && !this._isLeftAxisVisible()) {
 			return 0;
 		}
 
 		if (position === DefaultPriceScaleId.Right && !this._isRightAxisVisible()) {
-			return 0;
-		}
-
-		if (this._paneWidgets.length === 0) {
 			return 0;
 		}
 
