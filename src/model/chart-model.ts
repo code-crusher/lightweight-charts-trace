@@ -4,7 +4,7 @@ import { assert, ensureNotNull } from '../helpers/assertions';
 import { Delegate } from '../helpers/delegate';
 import { IDestroyable } from '../helpers/idestroyable';
 import { ISubscription } from '../helpers/isubscription';
-import { DeepPartial, merge } from '../helpers/strict-type-checks';
+import { DeepPartial, isNumber, merge } from '../helpers/strict-type-checks';
 
 import { PriceAxisViewRendererOptions } from '../renderers/iprice-axis-view-renderer';
 import { PriceAxisRendererOptionsProvider } from '../renderers/price-axis-renderer-options-provider';
@@ -886,8 +886,10 @@ export class ChartModel<HorzScaleItem> implements IDestroyable, IChartModelBase 
 		this._visibleSerieses = null;
 	}
 
-	public setAndSaveCurrentPosition(x: Coordinate, y: Coordinate, event: TouchMouseEventData | null, pane: Pane, skipEvent?: boolean): void {
-		this._crosshair.saveOriginCoord(x, y);
+	public setAndSaveCurrentPosition(x: Coordinate, y: Coordinate, event: TouchMouseEventData | null, pane: Pane, skipEvent?: boolean, skipSaveOrigin?: boolean): void {
+		if (!skipSaveOrigin) {
+			this._crosshair.saveOriginCoord(x, y);
+		}
 		let price = NaN;
 		let index = this._timeScale.coordinateToIndex(x, true);
 
@@ -927,7 +929,16 @@ export class ChartModel<HorzScaleItem> implements IDestroyable, IChartModelBase 
 		const y = priceScale.priceToCoordinate(price, ensureNotNull(firstValue));
 		const index = this._timeScale.timeToIndex(horizontalPosition as InternalHorzScaleItem, true);
 		const x = this._timeScale.indexToCoordinate(ensureNotNull(index));
-		this.setAndSaveCurrentPosition(x, y, null, pane, true);
+
+		// the origin coords are meant to be the position of the pointer (see updateCrosshair),
+		// so a synthetic position should only overwrite them if there's no pointer position saved already
+		const crosshair = this._crosshair;
+		if (!isNumber(crosshair.originCoordX()) || !isNumber(crosshair.originCoordY())) {
+			crosshair.saveOriginCoord(x, y);
+		}
+
+		// saveOriginCoord is skipped as the origin coords are already up to date
+		this.setAndSaveCurrentPosition(x, y, null, pane, true, true);
 	}
 
 	public clearCurrentPosition(skipEvent?: boolean): void {
