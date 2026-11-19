@@ -1286,6 +1286,185 @@ describe('DataLayer', () => {
 		});
 	});
 
+	describe('memory-efficient point data gh#1631', () => {
+		it('should keep correct time scale and indexes for a whitespace-only data set', () => {
+			const dataLayer = new DataLayer<Time>(behavior);
+			const series = createSeriesMock();
+
+			const updateResult = dataLayer.setSeriesData(series, [
+				dataItemAt(1000 as UTCTimestamp),
+				whitespaceItemAt(2000 as UTCTimestamp),
+				whitespaceItemAt(3000 as UTCTimestamp),
+				whitespaceItemAt(4000 as UTCTimestamp),
+				dataItemAt(5000 as UTCTimestamp),
+			]);
+
+			expect(updateResult.timeScale.baseIndex).to.be.equal(4 as TimePointIndex);
+			expect(updateResult.timeScale.points).excludingEvery('pointData').to.have.deep.members([
+				{ time: { timestamp: 1000 }, timeWeight: 21, originalTime: 1000 },
+				{ time: { timestamp: 2000 }, timeWeight: 22, originalTime: 2000 },
+				{ time: { timestamp: 3000 }, timeWeight: 21, originalTime: 3000 },
+				{ time: { timestamp: 4000 }, timeWeight: 30, originalTime: 4000 },
+				{ time: { timestamp: 5000 }, timeWeight: 21, originalTime: 5000 },
+			]);
+			expect(updateResult.timeScale.firstChangedPointIndex).to.be.equal(0);
+
+			// whitespace points must not create series data
+			const seriesUpdate = updateResult.series.get(series) as SeriesChanges;
+			expect(seriesUpdate.data).excludingEvery(['value', 'originalTime']).to.have.deep.members([
+				{ index: 0, time: { timestamp: 1000 } },
+				{ index: 4, time: { timestamp: 5000 } },
+			]);
+		});
+
+		it('should merge rows of the second series into shared time points', () => {
+			const dataLayer = new DataLayer<Time>(behavior);
+			const series1 = createSeriesMock();
+			const series2 = createSeriesMock();
+
+			const firstResult = dataLayer.setSeriesData(series1, [
+				dataItemAt(1000 as UTCTimestamp),
+				whitespaceItemAt(2000 as UTCTimestamp),
+				dataItemAt(3000 as UTCTimestamp),
+			]);
+
+			const series1FirstUpdate = firstResult.series.get(series1) as SeriesChanges;
+			expect(series1FirstUpdate.data.map((row: SeriesChanges['data'][number]) => row.index)).to.be.deep.equal([0, 2]);
+
+			// series2 shares all 3 time points, so the points must now hold rows of both series
+			const updateResult = dataLayer.setSeriesData(series2, [
+				dataItemAt(1000 as UTCTimestamp),
+				dataItemAt(2000 as UTCTimestamp),
+				dataItemAt(3000 as UTCTimestamp),
+			]);
+
+			expect(updateResult.timeScale.points).to.be.equal(undefined);
+			expect(updateResult.timeScale.firstChangedPointIndex).to.be.equal(undefined);
+			expect(updateResult.timeScale.baseIndex).to.be.equal(2 as TimePointIndex);
+
+			// indexes of both series must be synced via the shared points
+			const series2Update = updateResult.series.get(series2) as SeriesChanges;
+			expect(series2Update.data.map((row: SeriesChanges['data'][number]) => row.index)).to.be.deep.equal([0, 1, 2]);
+			expect(series2Update.data.map((row: SeriesChanges['data'][number]) => (row.time as unknown as TimePoint).timestamp)).to.be.deep.equal([1000, 2000, 3000]);
+		});
+
+		it('should keep indexes in sync when a series is updated at a shared time point', () => {
+			const dataLayer = new DataLayer<Time>(behavior);
+			const series1 = createSeriesMock();
+			const series2 = createSeriesMock();
+
+			dataLayer.setSeriesData(series1, [
+				dataItemAt(1000 as UTCTimestamp),
+				dataItemAt(3000 as UTCTimestamp),
+			]);
+			dataLayer.setSeriesData(series2, [
+				dataItemAt(1000 as UTCTimestamp),
+				dataItemAt(3000 as UTCTimestamp),
+			]);
+
+			// both series share the point at 3000 - updating it must not affect the time scale
+			const updateResult = dataLayer.updateSeriesData(series2, dataItemAt(3000 as UTCTimestamp), false);
+
+			expect(updateResult.timeScale.points).to.be.equal(undefined);
+			expect(updateResult.timeScale.firstChangedPointIndex).to.be.equal(undefined);
+
+			const series2Update = updateResult.series.get(series2) as SeriesChanges;
+			expect(series2Update.data.map((row: SeriesChanges['data'][number]) => row.index)).to.be.deep.equal([0, 1]);
+			expect(series2Update.data.map((row: SeriesChanges['data'][number]) => (row.time as unknown as TimePoint).timestamp)).to.be.deep.equal([1000, 3000]);
+		});
+
+		it('should allow a series to update a point owned by another series', () => {
+			const dataLayer = new DataLayer<Time>(behavior);
+			const series1 = createSeriesMock();
+			const series2 = createSeriesMock();
+
+			// only series1 has a row at 3000, the point is owned by it
+			dataLayer.setSeriesData(series1, [
+				dataItemAt(1000 as UTCTimestamp),
+				dataItemAt(3000 as UTCTimestamp),
+			]);
+
+			// a new point added by series2 in the middle
+			dataLayer.setSeriesData(series2, [dataItemAt(2000 as UTCTimestamp)]);
+
+			// series2 updates the point at 3000 which is owned by series1
+			const updateResult = dataLayer.updateSeriesData(series2, dataItemAt(3000 as UTCTimestamp), false);
+
+			expect(updateResult.timeScale.points).to.be.equal(undefined);
+			expect(updateResult.timeScale.firstChangedPointIndex).to.be.equal(undefined);
+			expect(updateResult.timeScale.baseIndex).to.be.equal(2 as TimePointIndex);
+
+			// series2 gets a new row appended at the shared point
+			const series2Update = updateResult.series.get(series2) as SeriesChanges;
+			expect(series2Update.data.map((row: SeriesChanges['data'][number]) => row.index)).to.be.deep.equal([1, 2]);
+			expect(series2Update.data.map((row: SeriesChanges['data'][number]) => (row.time as unknown as TimePoint).timestamp)).to.be.deep.equal([2000, 3000]);
+		});
+
+		it('should remove an owned point when its only row is popped', () => {
+			const dataLayer = new DataLayer<Time>(behavior);
+			const series1 = createSeriesMock();
+			const series2 = createSeriesMock();
+
+			dataLayer.setSeriesData(series1, [
+				dataItemAt(1000 as UTCTimestamp),
+				dataItemAt(2000 as UTCTimestamp),
+			]);
+			dataLayer.setSeriesData(series2, [
+				dataItemAt(2000 as UTCTimestamp),
+				dataItemAt(3000 as UTCTimestamp),
+			]);
+
+			// popping series2's last row must remove the point at 3000 (owned by series2 only)
+			const [, updateResponse1] = dataLayer.popSeriesData(series2, 1);
+			const points1 = updateResponse1.timeScale.points as InternalTimeScalePoint[];
+			expect(points1.map((point: InternalTimeScalePoint) => (point.time as unknown as TimePoint).timestamp)).to.be.deep.equal([1000, 2000]);
+
+			// popping series2's remaining row must keep the point at 2000 (still owned by series1)
+			const [, updateResponse2] = dataLayer.popSeriesData(series2, 1);
+			const points2 = updateResponse2.timeScale.points as InternalTimeScalePoint[];
+			expect(points2.map((point: InternalTimeScalePoint) => (point.time as unknown as TimePoint).timestamp)).to.be.deep.equal([1000, 2000]);
+
+			// popping series1's row at 2000 must remove the point as no series has a row there anymore
+			const [, updateResponse3] = dataLayer.popSeriesData(series1, 1);
+			const points3 = updateResponse3.timeScale.points as InternalTimeScalePoint[];
+			expect(points3.map((point: InternalTimeScalePoint) => (point.time as unknown as TimePoint).timestamp)).to.be.deep.equal([1000]);
+		});
+
+		it('should clean up empty points after replacing data of one of two series', () => {
+			const dataLayer = new DataLayer<Time>(behavior);
+			const series1 = createSeriesMock();
+			const series2 = createSeriesMock();
+
+			dataLayer.setSeriesData(series1, [
+				dataItemAt(1000 as UTCTimestamp),
+				dataItemAt(5000 as UTCTimestamp),
+			]);
+			dataLayer.setSeriesData(series2, [
+				dataItemAt(1000 as UTCTimestamp),
+				whitespaceItemAt(3000 as UTCTimestamp),
+				dataItemAt(5000 as UTCTimestamp),
+			]);
+
+			// series2 no longer has any data at 3000 - the point must be removed from the scale
+			const updateResult = dataLayer.setSeriesData(series2, [
+				dataItemAt(1000 as UTCTimestamp),
+				dataItemAt(5000 as UTCTimestamp),
+			]);
+
+			expect(updateResult.timeScale.firstChangedPointIndex).to.be.equal(1);
+			expect(updateResult.timeScale.points).excludingEvery(['pointData', 'originalTime']).to.have.deep.members([
+				{ time: { timestamp: 1000 }, timeWeight: 70 },
+				{ time: { timestamp: 5000 }, timeWeight: 30 },
+			]);
+
+			const series1Update = updateResult.series.get(series1) as SeriesChanges;
+			expect(series1Update.data.map((row: SeriesChanges['data'][number]) => row.index)).to.be.deep.equal([0, 1]);
+
+			const series2Update = updateResult.series.get(series2) as SeriesChanges;
+			expect(series2Update.data.map((row: SeriesChanges['data'][number]) => row.index)).to.be.deep.equal([0, 1]);
+		});
+	});
+
 	describe('Series Popping', () => {
 		it('should pop data from series and return popped items', () => {
 			const dataLayer = new DataLayer<Time>(behavior);
@@ -1364,7 +1543,8 @@ describe('DataLayer', () => {
 			const points1 = updateResponse1.timeScale.points as InternalTimeScalePoint[];
 			expect(points1[0].time).to.deep.equal({ timestamp: 1000 });
 			expect(points1[1].time).to.deep.equal({ timestamp: 2000 });
-			expect(points1[1].pointData.mapping.size).to.equal(1);
+			// the popped point is still shared with series2, which keeps its row there
+			expect(points1[1].pointData.mapping?.size ?? 1).to.equal(1);
 			expect(points1[2].time).to.deep.equal({ timestamp: 3000 });
 
 			const [popped2, updateResponse2] = dataLayer.popSeriesData(series1, 1);

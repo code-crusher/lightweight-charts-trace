@@ -32,6 +32,8 @@ const intradayWeightDivisors: WeightDivisor[] = [
 	{ divisor: hours(12), weight: TickMarkWeight.Hour12 },
 ];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function weightByTime(currentDate: Date, prevDate: Date): TickMarkWeight {
 	if (currentDate.getUTCFullYear() !== prevDate.getUTCFullYear()) {
 		return TickMarkWeight.Year;
@@ -50,6 +52,30 @@ function weightByTime(currentDate: Date, prevDate: Date): TickMarkWeight {
 	return TickMarkWeight.LessThanSecond;
 }
 
+/**
+ * Returns the weight for a point followed by another point, avoiding Date allocations
+ * while the points stay within the same UTC day (the common case for large data sets).
+ */
+function weightByTimestamps(currentMs: number, prevMs: number): TickMarkWeight {
+	if (Math.floor(currentMs / DAY_MS) === Math.floor(prevMs / DAY_MS)) {
+		// the same UTC day means the same year, month and day - only intraday divisors matter
+		return intradayWeightByMs(currentMs, prevMs);
+	}
+
+	// a different UTC day - dates are required to compare year/month/day
+	return weightByTime(new Date(currentMs), new Date(prevMs));
+}
+
+function intradayWeightByMs(currentMs: number, prevMs: number): TickMarkWeight {
+	for (let i = intradayWeightDivisors.length - 1; i >= 0; --i) {
+		if (Math.floor(prevMs / intradayWeightDivisors[i].divisor) !== Math.floor(currentMs / intradayWeightDivisors[i].divisor)) {
+			return intradayWeightDivisors[i].weight;
+		}
+	}
+
+	return TickMarkWeight.LessThanSecond;
+}
+
 function cast(t: InternalHorzScaleItem): TimePoint {
 	return t as unknown as TimePoint;
 }
@@ -60,29 +86,30 @@ export function fillWeightsForPoints(sortedTimePoints: readonly Mutable<TimeScal
 	}
 
 	let prevTime = startIndex === 0 ? null : cast(sortedTimePoints[startIndex - 1].time).timestamp;
-	let prevDate = prevTime !== null ? new Date(prevTime * 1000) : null;
+	let prevMs = prevTime !== null ? prevTime * 1000 : null;
 
 	let totalTimeDiff = 0;
 
 	for (let index = startIndex; index < sortedTimePoints.length; ++index) {
 		const currentPoint = sortedTimePoints[index];
-		const currentDate = new Date(cast(currentPoint.time).timestamp * 1000);
+		const currentTime = cast(currentPoint.time).timestamp;
+		const currentMs = currentTime * 1000;
 
-		if (prevDate !== null) {
-			currentPoint.timeWeight = weightByTime(currentDate, prevDate) as TickMarkWeightValue;
+		if (prevMs !== null) {
+			currentPoint.timeWeight = weightByTimestamps(currentMs, prevMs) as TickMarkWeightValue;
 		}
 
-		totalTimeDiff += cast(currentPoint.time).timestamp - (prevTime || cast(currentPoint.time).timestamp);
+		totalTimeDiff += currentTime - (prevTime ?? currentTime);
 
-		prevTime = cast(currentPoint.time).timestamp;
-		prevDate = currentDate;
+		prevTime = currentTime;
+		prevMs = currentMs;
 	}
 
 	if (startIndex === 0 && sortedTimePoints.length > 1) {
 		// let's guess a weight for the first point
 		// let's say the previous point was average time back in the history
 		const averageTimeDiff = Math.ceil(totalTimeDiff / (sortedTimePoints.length - 1));
-		const approxPrevDate = new Date((cast(sortedTimePoints[0].time).timestamp - averageTimeDiff) * 1000);
-		sortedTimePoints[0].timeWeight = weightByTime(new Date(cast(sortedTimePoints[0].time).timestamp * 1000), approxPrevDate) as TickMarkWeightValue;
+		const firstTime = cast(sortedTimePoints[0].time).timestamp;
+		sortedTimePoints[0].timeWeight = weightByTimestamps(firstTime * 1000, (firstTime - averageTimeDiff) * 1000) as TickMarkWeightValue;
 	}
 }
