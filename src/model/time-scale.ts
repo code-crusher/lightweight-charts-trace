@@ -595,21 +595,32 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 	}
 
 	/**
-	 * Shifts the right offset to compensate for bars being appended or replace to the right
-	 * so that the visible range stays in place.
+	 * Applies a new base index and shifts the right offset by `delta` at once, so that the
+	 * visible range stays in place when bars are appended or replaced to the right.
+	 *
+	 * Both changes have to be applied before the offset is clamped: the maximum right offset
+	 * depends on the base index, so clamping in between would move the visible range.
 	 */
-	public shiftRightOffset(delta: number): void {
+	public shiftBaseIndexAndRightOffset(baseIndex: TimePointIndex | null, delta: number): void {
 		if (this._commonTransitionStartState !== null) {
 			this._commonTransitionStartState.rightOffset -= delta;
 		}
 
 		const rightOffsetBefore = this._rightOffset;
-		this.setRightOffset(rightOffsetBefore - delta);
+		this._visibleRangeInvalidated = true;
+		this._baseIndexOrNull = baseIndex;
+		this._rightOffset -= delta;
+		this._correctOffset();
 		this._appendCompensation += rightOffsetBefore - this._rightOffset;
+
+		this._doFixLeftEdge();
+
+		this._model.recalculateAllPanes();
+		this._model.lightUpdate();
 	}
 
 	/**
-	 * The right offset plus every compensation applied by {@link shiftRightOffset}.
+	 * The right offset plus every compensation applied by {@link shiftBaseIndexAndRightOffset}.
 	 * Unlike `rightOffset()` it does not change when bars appended during a drag are compensated,
 	 * and unlike `baseIndex() + rightOffset()` it does not change when older bars are prepended
 	 * or when the visible range is shifted for a new bar, so it only moves when the view itself moves.
@@ -1162,9 +1173,17 @@ export class TimeScale<HorzScaleItem> implements ITimeScale {
 	}
 
 	private _maxRightOffset(): number {
-		return this._options.fixRightEdge
-			? 0
-			: (this._width / this._barSpacing) - Math.min(Constants.MinVisibleBarsCount, this._points.length, this._width / this._barSpacing);
+		if (this._options.fixRightEdge) {
+			return 0;
+		}
+
+		// the time scale might have whitespace-only points after the last bar,
+		// so allow scrolling right up to the last point rather than the last bar
+		const lastIndex = this._lastIndex();
+		const baseIndex = this._baseIndexOrNull;
+		const barsAfterBaseIndex = lastIndex === null || baseIndex === null ? 0 : Math.max(0, lastIndex - baseIndex);
+
+		return barsAfterBaseIndex + (this._width / this._barSpacing) - Math.min(Constants.MinVisibleBarsCount, this._points.length, this._width / this._barSpacing);
 	}
 
 	private _saveCommonTransitionsStartState(): void {

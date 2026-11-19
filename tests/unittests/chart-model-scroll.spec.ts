@@ -251,6 +251,30 @@ describe('ChartModel time scale scrolling', () => {
 		expect(timeScale.rightOffset()).to.be.equal(-548);
 	});
 
+	it('keeps the scrolled position when bars are appended while the view is scrolled into trailing whitespace', () => {
+		const model = createModel();
+		const timeScale = model.timeScale();
+		timeScale.setWidth(500);
+		// the last bar is at index 499, the time scale points up to 999 hold whitespace only
+		model.updateTimeScale(499 as TimePointIndex, points(1000), 0);
+
+		// drag all the way to the future so the whitespace tail comes into view
+		model.startScrollTime(0 as Coordinate);
+		model.scrollTimeTo(-10000 as Coordinate);
+		model.endScrollTime();
+		const visibleRangeBefore = timeScale.visibleLogicalRange();
+		const rightEdgeBefore = timeScale.baseIndex() + timeScale.rightOffset();
+
+		// bars arrive at the whitespace points: the view must not move
+		model.updateTimeScale(500 as TimePointIndex);
+		model.updateTimeScale(501 as TimePointIndex);
+
+		const visibleRangeAfter = timeScale.visibleLogicalRange();
+		expect(visibleRangeAfter?.left()).to.be.equal(visibleRangeBefore?.left());
+		expect(visibleRangeAfter?.right()).to.be.equal(visibleRangeBefore?.right());
+		expect(timeScale.baseIndex() + timeScale.rightOffset()).to.be.equal(rightEdgeBefore);
+	});
+
 	it('keeps the scrolled position when bars are appended while the drag is clamped at the oldest bar with fixLeftEdge enabled', () => {
 		const model = createModel({ fixLeftEdge: true });
 		const timeScale = model.timeScale();

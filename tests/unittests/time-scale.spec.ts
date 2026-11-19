@@ -11,7 +11,7 @@ import { InternalHorzScaleItem } from '../../src/model/ihorz-scale-behavior';
 import { ITimeScaleAnimation } from '../../src/model/invalidate-mask';
 import { LocalizationOptions } from '../../src/model/localization-options';
 import { Logical, TickMarkWeightValue, TimePointIndex, TimeScalePoint } from '../../src/model/time-data';
-import { TimeScale } from '../../src/model/time-scale';
+import { HorzScaleOptions, TimeScale } from '../../src/model/time-scale';
 
 function chartModelMock(): ChartModel<Time> {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -86,6 +86,71 @@ describe('TimeScale', () => {
 		expect(logicalRange).to.be.not.equal(null);
 		expect(logicalRange?.left()).to.be.closeTo(0.49, 1e-6);
 		expect(logicalRange?.right()).to.be.closeTo(0.51, 1e-6);
+	});
+
+	describe('scrolling with trailing whitespace points', () => {
+		function timeScaleWithBaseIndex(baseIndex: TimePointIndex, options: Partial<HorzScaleOptions> = {}): TimeScale<Time> {
+			const ts = new TimeScale<Time>(
+				chartModelMock(),
+				{ ...timeScaleOptionsDefaults, barSpacing: 1, rightOffset: 0, ...options },
+				fakeLocalizationOptions,
+				behavior
+			);
+			ts.setWidth(500);
+			ts.update(...tsUpdate(999));
+			ts.setBaseIndex(baseIndex);
+
+			return ts;
+		}
+
+		// the rightmost position the time scale can be scrolled to
+		const rightEdge = (ts: TimeScale<Time>): number => ts.baseIndex() + ts.rightOffset();
+
+		it('should allow scrolling right up to the last time scale point when it is a whitespace point', () => {
+			// the last bar is at index 499, the points after it hold whitespace only
+			const ts = timeScaleWithBaseIndex(499 as TimePointIndex);
+
+			ts.setRightOffset(10000);
+
+			const visibleRange = ts.visibleStrictRange();
+			expect(visibleRange).to.be.not.equal(null);
+			expect(visibleRange?.contains(999 as TimePointIndex)).to.be.equal(true);
+		});
+
+		it('should be able to scroll to the same right edge as when the last point has data', () => {
+			const withTrailingWhitespace = timeScaleWithBaseIndex(499 as TimePointIndex);
+			const withoutTrailingWhitespace = timeScaleWithBaseIndex(999 as TimePointIndex);
+
+			withTrailingWhitespace.setRightOffset(10000);
+			withoutTrailingWhitespace.setRightOffset(10000);
+
+			expect(rightEdge(withTrailingWhitespace)).to.be.equal(rightEdge(withoutTrailingWhitespace));
+		});
+
+		it('should not allow scrolling right past the last time scale point', () => {
+			const ts = timeScaleWithBaseIndex(499 as TimePointIndex);
+
+			ts.setRightOffset(10000);
+
+			// the same right edge as with data at the last point: two bars are kept visible
+			expect(rightEdge(ts)).to.be.equal(1497);
+		});
+
+		it('should not change the maximum right offset when there are no trailing whitespace points', () => {
+			const ts = timeScaleWithBaseIndex(999 as TimePointIndex);
+
+			ts.setRightOffset(10000);
+
+			expect(ts.rightOffset()).to.be.equal(498);
+		});
+
+		it('should still respect fixRightEdge when there are trailing whitespace points', () => {
+			const ts = timeScaleWithBaseIndex(499 as TimePointIndex, { fixRightEdge: true });
+
+			ts.setRightOffset(10000);
+
+			expect(ts.rightOffset()).to.be.equal(0);
+		});
 	});
 
 	it('fitContent should still work with a large maxBarSpacing and a few bars', () => {
