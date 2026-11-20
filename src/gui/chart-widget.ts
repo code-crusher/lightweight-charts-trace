@@ -795,7 +795,8 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 		index: TimePointIndex | null,
 		point: Point | null,
 		event: TouchMouseEventData | null,
-		pane?: PaneWidget
+		pane?: PaneWidget,
+		hitTestAtPoint: boolean = false
 	): MouseEventParamsImpl {
 		const seriesData = new Map<Series<SeriesType>, SeriesPlotRow<SeriesType>>();
 		if (index !== null) {
@@ -816,7 +817,12 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 			}
 		}
 
-		const hoveredSource = this.model().hoveredSource();
+		// A tap dispatches a click event without moving the crosshair, so the model's
+		// hovered source still describes the previous hover (or nothing at all).
+		// Hit-test the event point instead to report the object under the pointer.
+		const hoveredSource = hitTestAtPoint && pane !== undefined && point !== null
+			? pane.hitTest(point.x, point.y)
+			: this.model().hoveredSource();
 		const paneIndex = this._getPaneIndex(pane);
 		const hoveredInfo = buildHoveredEventInfo(hoveredSource, paneIndex);
 
@@ -853,7 +859,7 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 		point: Point | null,
 		event: TouchMouseEventData
 	): void {
-		this._clicked.fire(() => this._getMouseEventParamsImpl(time, point, event, pane));
+		this._clicked.fire(() => this._getMouseEventParamsImpl(time, point, event, pane, true));
 	}
 
 	private _onPaneWidgetDblClicked(
@@ -862,7 +868,7 @@ export class ChartWidget<HorzScaleItem> implements IDestroyable, IChartWidgetBas
 		point: Point | null,
 		event: TouchMouseEventData
 	): void {
-		this._dblClicked.fire(() => this._getMouseEventParamsImpl(time, point, event, pane));
+		this._dblClicked.fire(() => this._getMouseEventParamsImpl(time, point, event, pane, true));
 	}
 
 	private _onPaneWidgetCrosshairMoved(
