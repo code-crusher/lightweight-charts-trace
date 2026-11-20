@@ -26,6 +26,10 @@ function beforeInteractions(container) {
 	);
 
 	seriesMarkerPrimitives.markers();
+	const coordinates = seriesMarkerPrimitives.markerCoordinates();
+	if (coordinates.length !== 4) {
+		throw new Error(`Expected 4 marker coordinates, got ${coordinates.length}`);
+	}
 	seriesMarkerPrimitives.getSeries();
 	seriesMarkerPrimitives.applyOptions({});
 	return Promise.resolve();

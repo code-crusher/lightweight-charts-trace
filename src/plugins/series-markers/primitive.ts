@@ -14,7 +14,7 @@ import { UpdateType } from '../../views/pane/iupdatable-pane-view';
 
 import { seriesMarkerOptionsDefaults, SeriesMarkersOptions } from './options';
 import { SeriesMarkersPaneView } from './pane-view';
-import { InternalSeriesMarker, MarkerPositions, SeriesMarker } from './types';
+import { InternalSeriesMarker, MarkerPositions, SeriesMarker, SeriesMarkerCoordinate } from './types';
 import {
 	calculateAdjustedMargin,
 	calculateShapeHeight,
@@ -88,6 +88,28 @@ export class SeriesMarkersPrimitive<HorzScaleItem> implements ISeriesPrimitive<H
 
 	public markers(): readonly SeriesMarker<HorzScaleItem>[] {
 		return this._markers;
+	}
+
+	/**
+	 * Returns the current coordinates of the markers, aligned with the markers
+	 * returned by {@link markers}. A coordinate is `null` when the marker isn't
+	 * currently positioned on the chart (outside the visible range, no
+	 * matching series data, or the chart has no data yet).
+	 */
+	public markerCoordinates(): readonly (SeriesMarkerCoordinate | null)[] {
+		if (this._paneView === null) {
+			// detached: no coordinates, but keep the result aligned with markers()
+			return this._markers.map(() => null);
+		}
+		// resolve pending marker recalculation so that the pane view holds the
+		// markers for the current data even if the chart hasn't repainted yet
+		this._recalculateMarkers();
+		if (this._indexedMarkers.length === 0 && this._markers.length > 0) {
+			// the markers couldn't be resolved against the series data (the
+			// series is empty): report no coordinates, aligned with markers()
+			return this._markers.map(() => null);
+		}
+		return this._paneView.markerCoordinates();
 	}
 
 	public paneViews(): readonly IPrimitivePaneView[] {
@@ -178,12 +200,12 @@ export class SeriesMarkersPrimitive<HorzScaleItem> implements ISeriesPrimitive<H
 		const timeScale = this._chart.timeScale();
 		const seriesData = this._series?.data();
 		if (timeScale.getVisibleLogicalRange() == null || !this._series || seriesData.length === 0) {
-			this._indexedMarkers = [];
+			this._setIndexedMarkers([]);
 			return;
 		}
 
 		const firstDataIndex = timeScale.timeToIndex(ensureNotNull(seriesData[0].time), true) as unknown as Logical;
-		this._indexedMarkers = this._markers.map<InternalSeriesMarker<TimePointIndex>>((marker: SeriesMarker<HorzScaleItem>, index: number) => {
+		this._setIndexedMarkers(this._markers.map<InternalSeriesMarker<TimePointIndex>>((marker: SeriesMarker<HorzScaleItem>, index: number) => {
 			const timePointIndex = timeScale.timeToIndex(marker.time, true) as unknown as Logical;
 			const searchMode = timePointIndex < firstDataIndex ? MismatchDirection.NearestRight : MismatchDirection.NearestLeft;
 			const seriesDataByIndex = ensureNotNull(this._series).dataByIndex(timePointIndex, searchMode);
@@ -223,8 +245,15 @@ export class SeriesMarkersPrimitive<HorzScaleItem> implements ISeriesPrimitive<H
 					price: marker.price, // Optional for bar positions
 				} satisfies InternalSeriesMarker<TimePointIndex>;
 			}
-		});
+		}));
 		this._recalculationRequired = false;
+	}
+
+	private _setIndexedMarkers(markers: InternalSeriesMarker<TimePointIndex>[]): void {
+		this._indexedMarkers = markers;
+		// keep the pane view in sync right away so that the marker coordinates
+		// can be read before the chart repaints
+		this._paneView?.setMarkers(this._indexedMarkers);
 	}
 
 	private _updateAllViews(updateType?: UpdateType): void {

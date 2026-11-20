@@ -1,3 +1,5 @@
+import { Coordinate } from '../../model/coordinate';
+
 /**
  * Represents the position of a series marker relative to a specific price.
  *
@@ -87,6 +89,27 @@ export interface SeriesMarkerPrice<TimeType> extends SeriesMarkerBase<TimeType> 
 export type SeriesMarker<TimeType> = SeriesMarkerBar<TimeType> | SeriesMarkerPrice<TimeType>;
 
 export type MarkerPositions = Record<SeriesMarkerPosition, boolean>;
+
+/**
+ * The current coordinates of a marker on the chart.
+ *
+ * The coordinates are in the same pane coordinate space as
+ * {@link MouseEventParams.point} and can be used, for example, to position
+ * a tooltip above a marker. They change whenever the chart is scrolled,
+ * zoomed, or resized, and are `null` when the marker cannot currently be
+ * positioned: when it isn't within the visible range, or the chart has no
+ * data yet.
+ */
+export interface SeriesMarkerCoordinate {
+	/**
+	 * The x coordinate of the marker, in pixels from the left of the chart pane.
+	 */
+	x: Coordinate;
+	/**
+	 * The y coordinate of the marker, in pixels from the top of the chart pane.
+	 */
+	y: Coordinate;
+}
 
 export interface InternalSeriesMarker<TimeType> extends SeriesMarkerBase<TimeType> {
 	internalId: number;

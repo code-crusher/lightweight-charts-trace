@@ -33,6 +33,15 @@ seriesMarkersPrimitive.setMarkers([
 	},
 ]);
 
+const markerCoordinates: readonly (import('../../src/plugins/series-markers/types').SeriesMarkerCoordinate | null)[] = seriesMarkersPrimitive.markerCoordinates();
+const firstCoordinate: import('../../src/plugins/series-markers/types').SeriesMarkerCoordinate | null = markerCoordinates[0];
+if (firstCoordinate !== null) {
+	const x: number = firstCoordinate.x;
+	const y: number = firstCoordinate.y;
+	void x;
+	void y;
+}
+
 type HorizontalScaleType = number;
 
 class HorzScaleBehaviorPrice implements IHorzScaleBehavior<HorizontalScaleType> {

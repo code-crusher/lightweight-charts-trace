@@ -32,6 +32,13 @@ export interface SeriesMarkerRendererDataItem extends TimedValue {
 	internalId: number;
 	externalId?: string;
 	text?: SeriesMarkerText;
+	/**
+	 * Whether the item currently has up-to-date coordinates. Items which are
+	 * outside the visible range, or whose position can't be resolved (no
+	 * matching series data), are not positioned and must not report
+	 * coordinates.
+	 */
+	positioned?: boolean;
 }
 
 export interface SeriesMarkerRendererData {

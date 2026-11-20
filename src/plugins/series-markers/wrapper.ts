@@ -7,7 +7,7 @@ import { SeriesType } from '../../model/series-options';
 import { ISeriesPrimitiveWrapper, SeriesPrimitiveAdapter } from '../series-primitive-adapter';
 import { SeriesMarkersOptions } from './options';
 import { SeriesMarkersPrimitive } from './primitive';
-import { SeriesMarker } from './types';
+import { SeriesMarker, SeriesMarkerCoordinate } from './types';
 
 /**
  * Interface for a series markers plugin
@@ -22,6 +22,20 @@ export interface ISeriesMarkersPluginApi<HorzScaleItem> extends ISeriesPrimitive
 	 * Returns current markers.
 	 */
 	markers: () => readonly SeriesMarker<HorzScaleItem>[];
+	/**
+	 * Returns the current coordinates of the markers, aligned with the markers
+	 * returned by `markers()`.
+	 *
+	 * The coordinates are in the same pane coordinate space as
+	 * `MouseEventParams.point`, so they can be used, for example, to position a
+	 * tooltip on top of a marker.
+	 *
+	 * A coordinate is `null` when the marker isn't currently positioned on the
+	 * chart: when it isn't within the visible range, has no matching series
+	 * data, or the chart has no data yet. The values change whenever the chart
+	 * is scrolled, zoomed, or resized.
+	 */
+	markerCoordinates: () => readonly (SeriesMarkerCoordinate | null)[];
 	/**
 	 * Detaches the plugin from the series.
 	 */
@@ -43,6 +57,10 @@ class SeriesMarkersPrimitiveWrapper<HorzScaleItem>
 
 	public markers(): readonly SeriesMarker<HorzScaleItem>[] {
 		return this._primitive.markers();
+	}
+
+	public markerCoordinates(): readonly (SeriesMarkerCoordinate | null)[] {
+		return this._primitive.markerCoordinates();
 	}
 }
 
@@ -75,6 +93,7 @@ class SeriesMarkersPrimitiveWrapper<HorzScaleItem>
  *  seriesMarkers.setMarkers([]);
  *
  *  // `seriesMarkers.markers()` returns current markers
+ *  // `seriesMarkers.markerCoordinates()` returns their current coordinates
  * ```
  */
 export function createSeriesMarkers<HorzScaleItem>(

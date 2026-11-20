@@ -19,7 +19,7 @@ import {
 	SeriesMarkerRendererDataItem,
 	SeriesMarkersRenderer,
 } from './renderer';
-import { InternalSeriesMarker, SeriesMarkerPosition, SeriesMarkerPricePosition } from './types';
+import { InternalSeriesMarker, SeriesMarkerCoordinate, SeriesMarkerPosition, SeriesMarkerPricePosition } from './types';
 import {
 	calculateShapeHeight,
 	shapeMargin as calculateShapeMargin,
@@ -75,10 +75,10 @@ function fillSizeAndY<HorzScaleItem>(
 	shapeMargin: number,
 	series: ISeriesApi<SeriesType, HorzScaleItem>,
 	chart: IChartApiBase<HorzScaleItem>
-): void {
+): boolean {
 	const price = getPrice(seriesData, marker, series.priceScale().options().invertScale);
 	if (price === undefined) {
-		return;
+		return false;
 	}
 	const ignoreOffset = isPriceMarker(marker.position);
 	const timeScale = chart.timeScale();
@@ -96,7 +96,7 @@ function fillSizeAndY<HorzScaleItem>(
 			if (rendererItem.text !== undefined) {
 				rendererItem.text.y = rendererItem.y + halfSize + shapeMargin + textHeight * (0.5 + Constants.TextMargin) as Coordinate;
 			}
-			return;
+			return true;
 		}
 		case 'aboveBar':
 		case 'atPriceTop': {
@@ -109,7 +109,7 @@ function fillSizeAndY<HorzScaleItem>(
 			if (!ignoreOffset) {
 				offsets.aboveBar += shapeSize + shapeMargin;
 			}
-			return;
+			return true;
 		}
 		case 'belowBar':
 		case 'atPriceBottom': {
@@ -122,11 +122,12 @@ function fillSizeAndY<HorzScaleItem>(
 			if (!ignoreOffset) {
 				offsets.belowBar += shapeSize + shapeMargin;
 			}
-			return;
+			return true;
 		}
 	}
 
 	ensureNever(position);
+	return false;
 }
 
 function isValueData<HorzScaleItem>(
@@ -182,8 +183,30 @@ export class SeriesMarkersPaneView<HorzScaleItem> implements IPrimitivePaneView 
 	}
 
 	public setMarkers(markers: InternalSeriesMarker<TimePointIndex>[]): void {
+		if (this._markers === markers) {
+			return;
+		}
 		this._markers = markers;
 		this.update('data');
+	}
+
+	/**
+	 * Returns the current coordinates of the markers, aligned with the markers
+	 * passed to the last {@link setMarkers} call. A coordinate is `null` when
+	 * the marker isn't currently positioned on the chart (outside the visible
+	 * range, no matching series data, or the chart has no data yet).
+	 */
+	public markerCoordinates(): readonly (SeriesMarkerCoordinate | null)[] {
+		if (this._invalidated) {
+			this._makeValid();
+		}
+
+		// the type annotation is required so that the property-rename build step
+		// resolves the object literal against the public SeriesMarkerCoordinate type
+		// and keeps the `x`/`y` property names intact
+		return this._data.items.map((item: SeriesMarkerRendererDataItem): SeriesMarkerCoordinate | null =>
+			item.positioned ? { x: item.x, y: item.y } : null
+		);
 	}
 
 	public update(updateType?: UpdateType): void {
@@ -216,8 +239,15 @@ export class SeriesMarkersPaneView<HorzScaleItem> implements IPrimitivePaneView 
 				externalId: marker.id,
 				internalId: marker.internalId,
 				text: undefined,
+				positioned: false,
 			}));
 			this._dataInvalidated = false;
+		} else {
+			// drop the coordinates of the previous pass; they are re-computed below
+			// for the markers which are visible, everything else reports no coordinates
+			for (const item of this._data.items) {
+				item.positioned = false;
+			}
 		}
 
 		const layoutOptions = this._chart.options()['layout'];
@@ -269,7 +299,7 @@ export class SeriesMarkersPaneView<HorzScaleItem> implements IPrimitivePaneView 
 			if (dataAt === null) {
 				continue;
 			}
-			fillSizeAndY<HorzScaleItem>(rendererItem, marker, dataAt, offsets, layoutOptions.fontSize, shapeMargin, this._series, this._chart);
+			rendererItem.positioned = fillSizeAndY<HorzScaleItem>(rendererItem, marker, dataAt, offsets, layoutOptions.fontSize, shapeMargin, this._series, this._chart);
 		}
 
 		this._invalidated = false;

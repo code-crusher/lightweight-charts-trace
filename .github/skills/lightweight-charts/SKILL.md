@@ -260,6 +260,8 @@ markers.setMarkers([
 
 `color` is required on every marker (`position`, `shape`, `time` too); `text`, `size`, `id`, `price` are optional. Do not put marker objects into `setData()` points. Do not call `series.setMarkers(...)` in v5.
 
+`markers.markerCoordinates()` returns the current `{ x, y }` of each marker (aligned with `markers()`), or `null` for markers which aren't currently drawn (out of the visible range, or no matching series data). Use it to position tooltips over markers.
+
 ### Timezone display
 
 ```ts
