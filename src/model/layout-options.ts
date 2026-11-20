@@ -118,12 +118,13 @@ export interface LayoutOptions {
 	/**
 	 * Display the TradingView attribution logo on the main chart pane.
 	 *
-	 * The licence for library specifies that you add the "attribution notice"
-	 * from the NOTICE file to your code and a link to https://www.tradingview.com/ to
-	 * the page of your website or mobile application that is available to your users.
-	 * Using this attribution logo is sufficient for meeting this linking requirement.
-	 * However, if you already fulfill this requirement then you can disable this
-	 * attribution logo.
+	 * The Apache License 2.0, under which the library is distributed, requires
+	 * retaining the "attribution notice" from the NOTICE file when you
+	 * distribute any derivative works, but it does not require a link on your
+	 * website or mobile application.
+	 * As thanks for creating this product, we'd be grateful if you display a link
+	 * to https://www.tradingview.com/ in a prominent place, and using this
+	 * attribution logo is a convenient way of doing so.
 	 *
 	 * @defaultValue true
 	 */

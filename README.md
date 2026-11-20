@@ -124,10 +124,9 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 This software incorporates several parts of tslib (<https://github.com/Microsoft/tslib>, (c) Microsoft Corporation) that are covered by BSD Zero Clause License.
 
-This license requires specifying TradingView as the product creator.
-You shall add the "attribution notice" from the NOTICE file and a link to <https://www.tradingview.com/> to the page of your website or mobile application that is available to your users.
-As thanks for creating this product, we'd be grateful if you add it in a prominent place.
-You can use the [`attributionLogo`](https://tradingview.github.io/lightweight-charts/docs/api/interfaces/LayoutOptions#attributionLogo) chart option for displaying an appropriate link to <https://www.tradingview.com/> on the chart itself, which will satisfy the link requirement.
+Under the Apache License, Version 2.0, you must retain the copyright, trademark, and attribution notices from this project, including the "attribution notice" in the [NOTICE](./NOTICE) file, when you distribute any derivative works (see Sections 4(c) and 4(d) of the [LICENSE](./LICENSE) file).
+As thanks for creating this product, we'd be grateful if you also display a link to <https://www.tradingview.com/> in a prominent place, such as a public page of your website or mobile application.
+You can use the [`attributionLogo`](https://tradingview.github.io/lightweight-charts/docs/api/interfaces/LayoutOptions#attributionLogo) chart option for displaying such a link on the chart itself.
 
 [demo-url]: https://www.tradingview.com/lightweight-charts/
 

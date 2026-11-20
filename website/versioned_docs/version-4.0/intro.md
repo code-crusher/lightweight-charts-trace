@@ -43,13 +43,13 @@ The library ships with the following build variants:
 
 :::tip
 
-The Lightweight Charts™ license requires specifying TradingView as the product creator.
+Lightweight Charts™ is licensed under Apache License 2.0, so you can use it in any project, including commercial ones.
 
 :::
 
-You shall add the "attribution notice" from the [NOTICE](https://github.com/tradingview/lightweight-charts/blob/master/NOTICE) file and a link to [https://www.tradingview.com](https://www.tradingview.com) to the page of your website or mobile application that is available to your users.
+The license requires retaining the copyright, trademark, and attribution notices from the project — including the "attribution notice" from the [NOTICE](https://github.com/tradingview/lightweight-charts/blob/master/NOTICE) file — when you distribute any derivative works.
 
-As thanks for creating Lightweight Charts™, we'd be grateful if you add the attribution notice in a prominent place.
+As thanks for creating Lightweight Charts™, we'd be grateful if you also display the [https://www.tradingview.com](https://www.tradingview.com) link in a prominent place.
 
 ## Creating a chart
 
