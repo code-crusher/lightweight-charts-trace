@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Lightweight Charts - Trade Management Plugin Example</title>
+		<link href="../../../examples-base.css" rel="stylesheet" />
+		<style>
+			#chart {
+				height: 450px;
+				max-width: 1000px;
+			}
+			#figures {
+				background-color: rgba(224, 227, 235, 1);
+				border-radius: 5px;
+				padding: 10px;
+				font-size: 12px;
+				max-width: 280px;
+				white-space: pre;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="container">
+			<div id="chart"></div>
+			<pre id="figures"></pre>
+		</div>
+		<div id="description">
+			<h1>Trade Management</h1>
+			<p class="hint-message">HINT: Drag the entry, stop loss or take profit lines</p>
+			<p>
+				An example of trade management, drawn the way TradingView does: a solid
+				entry line with a profit and loss badge, dashed stop loss and take
+				profit lines, a filled zone between the entry and each exit level, and
+				a price axis label on every level. Each line can be dragged directly
+				on the chart. The current profit and loss is measured against the last
+				bar and updates as new data arrives.
+			</p>
+		</div>
+		<script type="module" src="./example.ts"></script>
+	</body>
+</html>
