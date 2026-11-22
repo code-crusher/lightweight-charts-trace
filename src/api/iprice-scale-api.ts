@@ -17,6 +17,8 @@ export interface IPriceScaleApi {
 	 *
 	 * For an overlay price scale that has no series yet, returns the `overlayPriceScales` defaults.
 	 *
+	 * The returned object is a copy: changing it doesn't change the price scale. Use {@link applyOptions} to change the price scale options.
+	 *
 	 * @returns Full set of currently applied options, including defaults
 	 */
 	options(): Readonly<PriceScaleOptions>;

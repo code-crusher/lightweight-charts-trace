@@ -23,6 +23,8 @@ export interface IPriceLine {
 	applyOptions(options: Partial<PriceLineOptions>): void;
 	/**
 	 * Get the currently applied options.
+	 *
+	 * The returned object is a copy: changing it doesn't change the price line. Use {@link applyOptions} to change the price line options.
 	 */
 	options(): Readonly<PriceLineOptions>;
 }

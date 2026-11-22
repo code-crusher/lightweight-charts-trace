@@ -36,9 +36,7 @@ export function createChartEx<HorzScaleItem, THorzScaleBehavior extends IHorzSca
 	options?: DeepPartial<ReturnType<THorzScaleBehavior['options']>>
 ): IChartApiBase<HorzScaleItem> {
 	const htmlElement = fetchHtmlElement(container);
-	const res = new ChartApi<HorzScaleItem>(htmlElement, horzScaleBehavior, options);
-	horzScaleBehavior.setOptions(res.options());
-	return res;
+	return new ChartApi<HorzScaleItem>(htmlElement, horzScaleBehavior, options);
 }
 
 /**

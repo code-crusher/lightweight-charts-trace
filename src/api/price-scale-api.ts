@@ -1,7 +1,7 @@
 import { IChartWidgetBase } from '../gui/chart-widget';
 
 import { ensureNotNull } from '../helpers/assertions';
-import { DeepPartial } from '../helpers/strict-type-checks';
+import { clone, DeepPartial } from '../helpers/strict-type-checks';
 
 import { isDefaultPriceScale } from '../model/default-price-scale';
 import { PriceRangeImpl } from '../model/price-range-impl';
@@ -34,7 +34,7 @@ export class PriceScaleApi implements IPriceScaleApi {
 			return createPriceScaleOptions(model.options().overlayPriceScales);
 		}
 
-		return scale.priceScale.options();
+		return clone(scale.priceScale.options());
 	}
 
 	public width(): number {

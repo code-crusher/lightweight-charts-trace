@@ -304,6 +304,8 @@ export interface IChartApiBase<HorzScaleItem = Time> {
 	/**
 	 * Returns currently applied options
 	 *
+	 * The returned object is a copy: changing it doesn't change the chart. Use {@link applyOptions} to change the chart options.
+	 *
 	 * @returns Full set of currently applied options, including defaults
 	 */
 	options(): Readonly<ChartOptionsImpl<HorzScaleItem>>;

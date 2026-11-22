@@ -1,3 +1,5 @@
+import { clone } from '../helpers/strict-type-checks';
+
 import { CustomPriceLine } from '../model/custom-price-line';
 import { PriceLineOptions } from '../model/price-line-options';
 
@@ -14,7 +16,7 @@ export class PriceLine implements IPriceLine {
 		this._priceLine.applyOptions(options);
 	}
 	public options(): Readonly<PriceLineOptions> {
-		return this._priceLine.options();
+		return clone(this._priceLine.options());
 	}
 
 	public priceLine(): CustomPriceLine {

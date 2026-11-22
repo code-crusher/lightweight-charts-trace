@@ -97,7 +97,6 @@ export class YieldChartApi extends ChartApi<number> implements IYieldCurveChartA
 		) as YieldCurveChartOptions;
 		const horzBehaviour = new YieldCurveHorzScaleBehavior();
 		super(container, horzBehaviour, fullOptions);
-		horzBehaviour.setOptions(this.options() as YieldCurveChartOptions);
 		this._initWhitespaceSeries();
 	}
 

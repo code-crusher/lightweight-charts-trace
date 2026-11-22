@@ -128,6 +128,9 @@ export class ChartApi<HorzScaleItem> implements IChartApiBase<HorzScaleItem>, Da
 
 		this._horzScaleBehavior = horzScaleBehavior;
 		this._chartWidget = new ChartWidget(container, internalOptions, horzScaleBehavior);
+		// the horizontal scale behaviour shares the very same options object with the chart
+		// so it observes the options applied later via `applyOptions`
+		horzScaleBehavior.setOptions(internalOptions);
 
 		this._chartWidget.clicked().subscribe(
 			(paramSupplier: MouseEventParamsImplSupplier) => {
@@ -280,12 +283,13 @@ export class ChartApi<HorzScaleItem> implements IChartApiBase<HorzScaleItem>, Da
 
 	public applyOptions(options: DeepPartial<ChartOptionsImpl<HorzScaleItem>>): void {
 		if (process.env.NODE_ENV === 'development') {
+			const currentOptions = this._chartWidget.options();
 			const colorSpace = options.layout?.colorSpace;
-			if (colorSpace !== undefined && colorSpace !== this.options().layout.colorSpace) {
+			if (colorSpace !== undefined && colorSpace !== currentOptions.layout.colorSpace) {
 				throw new Error(`colorSpace option should not be changed once the chart has been created.`);
 			}
 			const colorParsers = options.layout?.colorParsers;
-			if (colorParsers !== undefined && colorParsers !== this.options().layout.colorParsers) {
+			if (colorParsers !== undefined && colorParsers !== currentOptions.layout.colorParsers) {
 				throw new Error(`colorParsers option should not be changed once the chart has been created.`);
 			}
 		}
@@ -293,7 +297,7 @@ export class ChartApi<HorzScaleItem> implements IChartApiBase<HorzScaleItem>, Da
 	}
 
 	public options(): Readonly<ChartOptionsImpl<HorzScaleItem>> {
-		return this._chartWidget.options() as Readonly<ChartOptionsImpl<HorzScaleItem>>;
+		return clone(this._chartWidget.options());
 	}
 
 	public takeScreenshot(addTopLayer: boolean = false, includeCrosshair: boolean = false): HTMLCanvasElement {
